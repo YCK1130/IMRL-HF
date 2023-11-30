@@ -86,17 +86,20 @@
       <joint name="goal_slidex" type="slide" pos="0 0 0" axis="1 0 0" range="-10.3213 10.3" damping="0.5"/>
     </body>
 
-    <body name="mirror_r_shoulder_pan_link" pos="0 1.6 0">
-      <geom name="mirror_e1" type="sphere" rgba="0.6 0.6 0.6 1" pos="-0.06 0.05 0.2" size="0.05" />
-      <geom name="mirror_e2" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 0.06 0.05 0.2" size="0.05" />
-      <geom name="mirror_e1p" type="sphere" rgba="0.1 0.1 0.1 1" pos="-0.06 0.09 0.2" size="0.03" />
-      <geom name="mirror_e2p" type="sphere" rgba="0.1 0.1 0.1 1" pos=" 0.06 0.09 0.2" size="0.03" />
+    <body name="mirror_r_shoulder_pan_link" pos="0 1.6 0" axisangle  = "0 0 1 -1.7">
+      <geom name="mirror_e1" type="sphere" rgba="0.6 0.6 0.6 1" pos="0.06 0.05 0.2" size="0.05" />
+      <geom name="mirror_e2" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 0.06 -0.05 0.2" size="0.05" />
+      <geom name="mirror_e3" type="sphere" rgba="0.6 0.6 0.6 1" pos="0.06 0.05 -0.2" size="0.05" />
+      <geom name="mirror_e4" type="sphere" rgba="0.6 0.6 0.6 1" pos="0.06 -0.05 -0.2" size="0.05" />
+      <!-- <geom name="mirror_e1p" type="sphere" rgba="0.1 0.1 0.1 1" pos="-0.06 0.09 0.2" size="0.03" /> -->
+      <!-- <geom name="mirror_e2p" type="sphere" rgba="0.1 0.1 0.1 1" pos=" 0.06 0.09 0.2" size="0.03" /> -->
+
       <geom name="mirror_sp" type="capsule" fromto="0 0 -0.4 0 0 0.2" size="0.1" />
       <joint name="mirror_r_shoulder_pan_joint" type="hinge" pos="0 0 0" axis="0 0 1" range="-2.2854 1.714602" damping="1.0" />
 
       <body name="mirror_r_shoulder_lift_link" pos="0.1 0 0">
         <geom name="mirror_sl" type="capsule" fromto="0 -0.1 0 0 0.1 0" size="0.1" />
-        <joint name="mirror_r_shoulder_lift_joint" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.5236 1.3963" damping="1.0" />
+        <joint name="mirror_r_shoulder_lift_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.5236 1.3963" damping="1.0" />
 
         <body name="mirror_r_upper_arm_roll_link" pos="0 0 0">
           <geom name="mirror_uar" type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.02" />
@@ -156,4 +159,13 @@
     <motor joint="r_wrist_flex_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="r_wrist_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true"/>
   </actuator>
+  <!-- <actuator>
+    <motor joint="mirror_r_shoulder_pan_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_shoulder_lift_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_upper_arm_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_elbow_flex_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_forearm_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_wrist_flex_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
+    <motor joint="mirror_r_wrist_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true"/>
+  </actuator> -->
 </mujoco>

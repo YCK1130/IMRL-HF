@@ -222,6 +222,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
     def step(self, action):
         vec_1 = self.get_geom_com("mirror_sword_blade") - \
             self.get_geom_com("sword_blade")
+        # vev_close = exp
         # vec_2 = self.get_body_com("object") - self.get_body_com("goal")
         # print(self.get_geom_com("sword_blade"))
         reward_near = -np.linalg.norm(vec_1) * self._reward_near_weight
