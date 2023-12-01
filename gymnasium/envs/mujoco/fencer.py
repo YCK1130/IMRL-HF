@@ -196,7 +196,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(53,), dtype=np.float64)
+                                shape=(59,), dtype=np.float64)
 
         MujocoEnv.__init__(
             self,
