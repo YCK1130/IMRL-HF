@@ -221,30 +221,30 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
     def step(self, action):
         vec_1 = self.get_geom_com(
-            "e1") - self.get_geom_com("mirror_sword_blade")
+            "e1") - self.get_geom_com("mirror_sword_tip")
         vec_2 = self.get_geom_com(
-            "e2") - self.get_geom_com("mirror_sword_blade")
+            "e2") - self.get_geom_com("mirror_sword_tip")
         vec_3 = self.get_geom_com(
-            "e3") - self.get_geom_com("mirror_sword_blade")
+            "e3") - self.get_geom_com("mirror_sword_tip")
         vec_4 = self.get_geom_com(
-            "e4") - self.get_geom_com("mirror_sword_blade")
+            "e4") - self.get_geom_com("mirror_sword_tip")
         vec_5 = self.get_geom_com("mirror_e1") - \
-            self.get_geom_com("sword_blade")
+            self.get_geom_com("sword_tip")
         vec_6 = self.get_geom_com("mirror_e2") - \
-            self.get_geom_com("sword_blade")
+            self.get_geom_com("sword_tip")
         vec_7 = self.get_geom_com("mirror_e3") - \
-            self.get_geom_com("sword_blade")
+            self.get_geom_com("sword_tip")
         vec_8 = self.get_geom_com("mirror_e4") - \
-            self.get_geom_com("sword_blade")
+            self.get_geom_com("sword_tip")
         vecs_1 = [vec_1, vec_2, vec_3, vec_4]
         vecs_2 = [vec_5, vec_6, vec_7, vec_8]
         penalty_1 = self.get_body_com(
-            "r_shoulder_pan_link") - self.get_geom_com("mirror_sword_blade")
+            "r_shoulder_pan_link") - self.get_geom_com("mirror_sword_tip")
         penalty_2 = self.get_body_com(
-            "mirror_r_shoulder_pan_link") - self.get_geom_com("sword_blade")
-        # vev_close = exp
-        # vec_2 = self.get_body_com("object") - self.get_body_com("goal")
-        # print(self.get_geom_com("sword_blade"))
+            "mirror_r_shoulder_pan_link") - self.get_geom_com("sword_tip")
+        # vec_9 = self.get_geom_com("mirror_sword_tip")-self.get_body_com()
+        reward_match = 0
+
         reward_near_mirror = 0
         reward_near = 0
         for i in range(4):
@@ -261,15 +261,19 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
         if penalty_far > -2:
             penalty_far = 0
+        elif abs(penalty_far) < 0.1:
+            penalty_far = 1
         if penalty_far_mirror > -2:
             penalty_far_mirror = 0
+        elif abs(penalty_far_mirror) < 0.1:
+            penalty_far_mirror = 1
 
         self.do_simulation(action, self.frame_skip)
 
         observation = self._get_obs()
         reward = reward_ctrl + reward_near
         info = {
-            "reward_near_mirror": reward_near_mirror,
+            # "reward_near_mirror": reward_near_mirror,
             "reward_ctrl": reward_ctrl,
             "reward_near": reward_near,
             "penalty_far_mirror": penalty_far_mirror,

@@ -62,6 +62,7 @@
                         <!-- <geom name="tip_armr" type="sphere" pos="0.1 0.1 0." size="0.01" /> -->
                       </body>
                       <geom name="sword_blade" type="box" size="0.5 0.005 0.01" pos="0.6 0.02 0.02" conaffinity="1"/>  <!-- Adjust size and shape as needed-->
+                       <geom name= "sword_tip" type = "sphere" rgba="0.6 0.6 0.6 1" pos=" 1.1 0.02 0.02" size="0.008" conaffinity="1"/>
                       <geom name="sword_handle" type="box" size="0.1 0.02 0.02"  pos="0.1 0.02 0.02" conaffinity="1"/>  <!--Handle, adjust position relative to blade -->
                         
                       <!-- <geom type="capsule" fromto="0 -0.1 0. 0.0 +0.1 0" size="0.02" contype="1" conaffinity="1" />
@@ -142,6 +143,7 @@
                         <!-- <geom name="tip_armr" type="sphere" pos="0.1 0.1 0." size="0.01" /> -->
                       </body>
                       <geom name="mirror_sword_blade" type="box" size="0.5 0.005 0.01" pos="0.6 0.02 0.02" conaffinity="1"/>  <!-- Adjust size and shape as needed-->
+                      <geom name= "mirror_sword_tip" type = "sphere" rgba="0.6 0.6 0.6 1" pos=" 1.1 0.02 0.02" size="0.008" conaffinity="1"/>
                       <geom name="mirror_sword_handle" type="box" size="0.1 0.02 0.02"  pos="0.1 0.02 0.02" conaffinity="1"/>  <!--Handle, adjust position relative to blade -->
                         
                       <!-- <geom type="capsule" fromto="0 -0.1 0. 0.0 +0.1 0" size="0.02" contype="1" conaffinity="1" />
@@ -168,7 +170,7 @@
     <motor joint="r_forearm_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="r_wrist_flex_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="r_wrist_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true"/>
-    <!-- <motor joint="mirror_y_slide" ctrlrange="-2.0 2.0" ctrllimited="true" /> -->
+    <motor joint="mirror_y_slide" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="mirror_r_shoulder_pan_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="mirror_r_shoulder_lift_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
     <motor joint="mirror_r_upper_arm_roll_joint" ctrlrange="-2.0 2.0" ctrllimited="true" />
