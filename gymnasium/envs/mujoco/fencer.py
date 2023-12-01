@@ -179,6 +179,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_near_weight: float = 0.5,
         reward_dist_weight: float = 1,
         reward_control_weight: float = 0.1,
+        reward_touching: float = 2,
+        penalty_touched: float = -2,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -194,7 +196,11 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_near_weight = reward_near_weight
         self._reward_dist_weight = reward_dist_weight
         self._reward_control_weight = reward_control_weight
-
+        self._reward_touching = reward_touching
+        self._penalty_touched = penalty_touched
+        self._touching = False
+        self._touched = False
+        self._end_count = 0
         observation_space = Box(low=-np.inf, high=np.inf,
                                 shape=(59,), dtype=np.float64)
 
@@ -220,6 +226,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return self.data.geom(geom_name).xpos
 
     def step(self, action):
+        done = False
         vec_1 = self.get_geom_com(
             "e1") - self.get_geom_com("mirror_sword_tip")
         vec_2 = self.get_geom_com(
@@ -238,6 +245,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             self.get_geom_com("sword_tip")
         vecs_1 = [vec_1, vec_2, vec_3, vec_4]
         vecs_2 = [vec_5, vec_6, vec_7, vec_8]
+        vecs_1_norm = list(map(np.linalg.norm, vecs_1)) # distance of being attacked by mirror
+        vecs_2_norm = list(map(np.linalg.norm, vecs_2)) # distance of attacking mirror
         penalty_1 = self.get_body_com(
             "r_shoulder_pan_link") - self.get_geom_com("mirror_sword_tip")
         penalty_2 = self.get_body_com(
@@ -249,9 +258,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_near = 0
         for i in range(4):
             reward_near_mirror += - \
-                np.linalg.norm(vecs_1[i]) * self._reward_near_weight
+                vecs_1_norm[i] * self._reward_near_weight
             reward_near += - \
-                np.linalg.norm(vecs_2[i]) * self._reward_near_weight
+                vecs_2_norm[i] * self._reward_near_weight
         reward_near /= 4
         reward_near_mirror /= 4
 
@@ -261,17 +270,33 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
         if penalty_far > -2:
             penalty_far = 0
-        elif abs(penalty_far) < 0.1:
+        else:
             penalty_far = 1
         if penalty_far_mirror > -2:
             penalty_far_mirror = 0
-        elif abs(penalty_far_mirror) < 0.1:
+        else:
             penalty_far_mirror = 1
+        # touching and being touched, the condition might be modified later
+        if min(vecs_1_norm) < 0.01 and not self._touched:
+            self._touched = True
+            penalty_touched = self._penalty_touched
+        else:
+            penalty_touched = 0
+        if min(vecs_2_norm) < 0.01 and not self._touching:
+            self._touching = True
+            reward_touching = self._reward_touching
+        else:
+            reward_touching = 0
+        # # After touching or being touched
+        # if self._touching or self._touched:
+        #     self._end_count += 1
+        #     if self._end_count >= 1000:
+        #         done = True
 
         self.do_simulation(action, self.frame_skip)
 
         observation = self._get_obs()
-        reward = reward_ctrl + reward_near
+        reward = reward_ctrl + reward_near - penalty_far + penalty_touched + reward_touching
         info = {
             # "reward_near_mirror": reward_near_mirror,
             "reward_ctrl": reward_ctrl,
@@ -281,7 +306,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         }
         if self.render_mode == "human":
             self.render()
-        return observation, reward, False, False, info
+        return observation, reward, done, False, info
 
     def reset_model(self):
         qpos = self.init_qpos
@@ -304,6 +329,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         )
         qvel[-4:] = 0
         self.set_state(qpos, qvel)
+        self._touching = False
+        self._touched = False
+        self._end_count = 0
         return self._get_obs()
 
     def _get_obs(self):
