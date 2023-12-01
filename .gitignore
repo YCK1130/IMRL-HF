@@ -41,3 +41,7 @@ tutorial/*.html
 # PyCharm project files
 .idea
 vizdoom.ini
+
+models
+
+

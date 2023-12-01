@@ -1,6 +1,6 @@
 import gymnasium as gym
 # from Gymnasium.gymnasium.envs.mujoco.humanoid_v4 import HumanoidEnv
-from stable_baselines3 import SAC, TD3, A2C
+from stable_baselines3 import SAC, TD3, A2C, PPO
 import os
 import argparse
 from gymnasium.wrappers import TimeLimit, RecordVideo, RecordEpisodeStatistics
@@ -23,6 +23,9 @@ def train(env, sb3_algo):
         case 'A2C':
             model = A2C('MlpPolicy', env, verbose=1,
                         device='cuda', tensorboard_log=log_dir)
+        case 'PPO':
+            model = PPO('MlpPolicy', env, verbose=1,
+                        device='cuda', tensorboard_log=log_dir)
         case _:
             print('Algorithm not found')
             return
@@ -34,7 +37,7 @@ def train(env, sb3_algo):
 
         model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False)
         model.save(f"{model_dir}/{sb3_algo}_{TIMESTEPS*iters}")
-        break
+        # break
 
 
 def test(env, sb3_algo, path_to_model):
@@ -46,6 +49,8 @@ def test(env, sb3_algo, path_to_model):
             model = TD3.load(path_to_model, env=env)
         case 'A2C':
             model = A2C.load(path_to_model, env=env)
+        case 'PPO':
+            model = PPO.load(path_to_model, env=env)
         case _:
             print('Algorithm not found')
             return
