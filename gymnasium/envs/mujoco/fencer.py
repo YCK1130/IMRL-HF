@@ -323,6 +323,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self.get_geom_com("mirror_e3"),
                 self.get_geom_com("mirror_e4"),
                 self.get_body_com("r_shoulder_pan_link"),
-                self.get_body_com("mirror_r_shoulder_pan_link")
+                self.get_body_com("mirror_r_shoulder_pan_link"),
+                self.get_geom_com("sword_tip"),
+                self.get_geom_com("mirror_sword_tip")
             ]
         )
