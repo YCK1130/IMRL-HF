@@ -196,7 +196,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(23,), dtype=np.float64)
+                                shape=(53,), dtype=np.float64)
 
         MujocoEnv.__init__(
             self,
@@ -220,23 +220,60 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return self.data.geom(geom_name).xpos
 
     def step(self, action):
-        vec_1 = self.get_geom_com("mirror_sword_blade") - \
+        vec_1 = self.get_geom_com(
+            "e1") - self.get_geom_com("mirror_sword_blade")
+        vec_2 = self.get_geom_com(
+            "e2") - self.get_geom_com("mirror_sword_blade")
+        vec_3 = self.get_geom_com(
+            "e3") - self.get_geom_com("mirror_sword_blade")
+        vec_4 = self.get_geom_com(
+            "e4") - self.get_geom_com("mirror_sword_blade")
+        vec_5 = self.get_geom_com("mirror_e1") - \
             self.get_geom_com("sword_blade")
+        vec_6 = self.get_geom_com("mirror_e2") - \
+            self.get_geom_com("sword_blade")
+        vec_7 = self.get_geom_com("mirror_e3") - \
+            self.get_geom_com("sword_blade")
+        vec_8 = self.get_geom_com("mirror_e4") - \
+            self.get_geom_com("sword_blade")
+        vecs_1 = [vec_1, vec_2, vec_3, vec_4]
+        vecs_2 = [vec_5, vec_6, vec_7, vec_8]
+        penalty_1 = self.get_body_com(
+            "r_shoulder_pan_link") - self.get_geom_com("mirror_sword_blade")
+        penalty_2 = self.get_body_com(
+            "mirror_r_shoulder_pan_link") - self.get_geom_com("sword_blade")
         # vev_close = exp
         # vec_2 = self.get_body_com("object") - self.get_body_com("goal")
         # print(self.get_geom_com("sword_blade"))
-        reward_near = -np.linalg.norm(vec_1) * self._reward_near_weight
-        # reward_dist = -np.linalg.norm(vec_2) * self._reward_dist_weight
+        reward_near_mirror = 0
+        reward_near = 0
+        for i in range(4):
+            reward_near_mirror += - \
+                np.linalg.norm(vecs_1[i]) * self._reward_near_weight
+            reward_near += - \
+                np.linalg.norm(vecs_2[i]) * self._reward_near_weight
+        reward_near /= 4
+        reward_near_mirror /= 4
+
         reward_ctrl = -np.square(action).sum() * self._reward_control_weight
+        penalty_far_mirror = - \
+            np.linalg.norm(penalty_1) * self._reward_dist_weight
+        penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
+        if penalty_far > -2:
+            penalty_far = 0
+        if penalty_far_mirror > -2:
+            penalty_far_mirror = 0
 
         self.do_simulation(action, self.frame_skip)
 
         observation = self._get_obs()
         reward = reward_ctrl + reward_near
         info = {
-            # "reward_dist": reward_dist,
+            "reward_near_mirror": reward_near_mirror,
             "reward_ctrl": reward_ctrl,
             "reward_near": reward_near,
+            "penalty_far_mirror": penalty_far_mirror,
+            "penaly_far": penalty_far
         }
         if self.render_mode == "human":
             self.render()
@@ -273,5 +310,15 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self.get_geom_com("sword_blade"),
                 self.get_geom_com("mirror_sword_blade"),
                 self.get_body_com("goal"),
+                self.get_geom_com("e1"),
+                self.get_geom_com("e2"),
+                self.get_geom_com("e3"),
+                self.get_geom_com("e4"),
+                self.get_geom_com("mirror_e1"),
+                self.get_geom_com("mirror_e2"),
+                self.get_geom_com("mirror_e3"),
+                self.get_geom_com("mirror_e4"),
+                self.get_body_com("r_shoulder_pan_link"),
+                self.get_body_com("mirror_r_shoulder_pan_link")
             ]
         )

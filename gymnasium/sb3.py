@@ -27,7 +27,7 @@ def train(env, sb3_algo):
             print('Algorithm not found')
             return
 
-    TIMESTEPS = 1200
+    TIMESTEPS = 50000
     iters = 0
     while True:
         iters += 1
