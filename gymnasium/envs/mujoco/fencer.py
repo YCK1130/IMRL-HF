@@ -3,6 +3,8 @@ __credits__ = ["Kallinteris-Andreas"]
 from typing import Dict
 
 import numpy as np
+import os
+from stable_baselines3 import SAC, TD3, A2C, PPO
 
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
@@ -174,11 +176,16 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
     def __init__(
         self,
         xml_file: str = "fencer.xml",
+        save_model_dir: str = "models",
+        method = PPO,
+        device: str ='cuda',
         frame_skip: int = 5,
         default_camera_config: Dict[str, float] = DEFAULT_CAMERA_CONFIG,
         reward_near_weight: float = 0.5,
         reward_dist_weight: float = 1,
         reward_control_weight: float = 0.1,
+        first_state_step: int = 1e6,
+        alter_state_step: int = 5e4,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -196,7 +203,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(59,), dtype=np.float64)
+                                shape=(34,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -207,6 +214,39 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             **kwargs,
         )
 
+        ''' 
+        change action space to be half of the original
+        action space, since we are only controlling one arm
+        '''
+        # check action space
+        assert len(self.action_space.shape) >= 1
+        env_action_space_shape = self.action_space.shape[0]
+        self.env_action_space_shape = env_action_space_shape
+        self.env_action_space = self.action_space
+        bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
+        low, high = bounds.T
+        low, high = low[:env_action_space_shape//2], high[:env_action_space_shape//2]
+        self.action_space = Box(low=low, high=high, dtype=np.float32)
+        # print(self.env_action_space)
+        # print(self.action_space)
+        # print(self.observation_space)
+
+        # print(len(self.data.qpos))
+        # print(self.data)
+
+        # self.init_direction = np.array([1, 0, 0])
+        self.target_point = ["e1", "e2", "e3", "e4","sp0"]
+        self.attact_point = "sword_tip"
+        self.center_point = "sp0"
+        
+        self.step_count = 0
+        self.first_state_step = first_state_step
+        self.alter_state_step = alter_state_step
+        self.last_model_update_step = 0
+        self.save_model_dir = save_model_dir
+        self.oppent_model = None
+        self.method = method
+        self.device = device
         self.metadata = {
             "render_modes": [
                 "human",
@@ -220,29 +260,27 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return self.data.geom(geom_name).xpos
 
     def step(self, action):
-        vec_1 = self.get_geom_com(
-            "e1") - self.get_geom_com("mirror_sword_tip")
-        vec_2 = self.get_geom_com(
-            "e2") - self.get_geom_com("mirror_sword_tip")
-        vec_3 = self.get_geom_com(
-            "e3") - self.get_geom_com("mirror_sword_tip")
-        vec_4 = self.get_geom_com(
-            "e4") - self.get_geom_com("mirror_sword_tip")
-        vec_5 = self.get_geom_com("mirror_e1") - \
-            self.get_geom_com("sword_tip")
-        vec_6 = self.get_geom_com("mirror_e2") - \
-            self.get_geom_com("sword_tip")
-        vec_7 = self.get_geom_com("mirror_e3") - \
-            self.get_geom_com("sword_tip")
-        vec_8 = self.get_geom_com("mirror_e4") - \
-            self.get_geom_com("sword_tip")
-        vecs_1 = [vec_1, vec_2, vec_3, vec_4]
-        vecs_2 = [vec_5, vec_6, vec_7, vec_8]
+        self.step_count += 1
+        vecs_1 = []
+        vecs_2 = []
+        agent = 0
+        opponent = 1 - agent
+        for point in self.target_point:
+            vecs_1 += [self._get_rel_pos( \
+                self.get_geom_com(f"{agent}_{self.attact_point}"),
+                self.get_geom_com(f"{opponent}_{point}"),
+                agent
+                )]
+            vecs_2 += [self._get_rel_pos( \
+                self.get_geom_com(f"{opponent}_{self.attact_point}"),
+                self.get_geom_com(f"{agent}_{point}"),
+                opponent
+                )]
         penalty_1 = self.get_body_com(
-            "r_shoulder_pan_link") - self.get_geom_com("mirror_sword_tip")
+            "0_r_shoulder_pan_link") - self.get_geom_com("1_sword_tip")
         penalty_2 = self.get_body_com(
-            "mirror_r_shoulder_pan_link") - self.get_geom_com("sword_tip")
-        # vec_9 = self.get_geom_com("mirror_sword_tip")-self.get_body_com()
+            "1_r_shoulder_pan_link") - self.get_geom_com("0_sword_tip")
+        # vec_9 = self.get_geom_com("1_sword_tip")-self.get_body_com()
         reward_match = 0
 
         reward_near_mirror = 0
@@ -268,7 +306,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         elif abs(penalty_far_mirror) < 0.1:
             penalty_far_mirror = 1
 
-        self.do_simulation(action, self.frame_skip)
+        # change action space back to original, for the mujoco env
+        temp_action_space = self.action_space
+        self.action_space = self.env_action_space
+        total_action = np.concatenate([action, self._get_opponent_action()])
+        self.do_simulation(total_action, self.frame_skip)
+        # change action space back to model env (one model)
+        self.action_space = temp_action_space
 
         observation = self._get_obs()
         reward = reward_ctrl + reward_near
@@ -284,6 +328,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return observation, reward, False, False, info
 
     def reset_model(self):
+        # self.step_count = 0
+        # print("reset model")
         qpos = self.init_qpos
 
         self.goal_pos = np.asarray([0, 0])
@@ -306,25 +352,87 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def _get_obs(self):
-        return np.concatenate(
-            [
-                self.data.qpos.flat[:7],
-                self.data.qvel.flat[:7],
-                self.get_geom_com("sword_blade"),
-                self.get_geom_com("mirror_sword_blade"),
-                self.get_body_com("goal"),
-                self.get_geom_com("e1"),
-                self.get_geom_com("e2"),
-                self.get_geom_com("e3"),
-                self.get_geom_com("e4"),
-                self.get_geom_com("mirror_e1"),
-                self.get_geom_com("mirror_e2"),
-                self.get_geom_com("mirror_e3"),
-                self.get_geom_com("mirror_e4"),
-                self.get_body_com("r_shoulder_pan_link"),
-                self.get_body_com("mirror_r_shoulder_pan_link"),
-                self.get_geom_com("sword_tip"),
-                self.get_geom_com("mirror_sword_tip")
-            ]
-        )
+    def _get_obs(self, agent=0):
+
+        assert len(self.data.qpos) % 2 == 0
+        if agent == 0:
+            actuator_state = (0,len(self.data.qpos)//2)
+        else:
+            actuator_state = (len(self.data.qpos)//2,len(self.data.qpos))
+        ''' joint state '''
+        obs = np.concatenate([self.data.qpos.flat[actuator_state[0]:actuator_state[1]],
+                self.data.qvel.flat[actuator_state[0]:actuator_state[1]],])
+        ''' tip state '''
+        obs = np.concatenate([obs, self._get_rel_pos( \
+                self.get_geom_com(f"{agent}_{self.center_point}"),
+                self.get_geom_com(f"{agent}_{self.attact_point}"),
+                agent
+                )])
+        ''' opponent state relative to agent tip '''
+        opponent = 1-agent
+        for point in self.target_point:
+            obs = np.concatenate([obs, self._get_rel_pos( \
+                self.get_geom_com(f"{agent}_{self.attact_point}"),
+                self.get_geom_com(f"{opponent}_{point}"),
+                agent
+                )])
+        # print("obs.shape",obs.shape) # (32,)
+        return obs.astype(np.float32)
+        # return np.concatenate(
+        #     [
+        #         self.data.qpos.flat[:7],
+        #         self.data.qvel.flat[:7],
+        #         self.get_geom_com("0_sword_blade"),
+        #         self.get_geom_com("1_sword_blade"),
+        #         self.get_geom_com("0_e1"),
+        #         self.get_geom_com("0_e2"),
+        #         self.get_geom_com("0_e3"),
+        #         self.get_geom_com("0_e4"),
+        #         self.get_geom_com("1_e1"),
+        #         self.get_geom_com("1_e2"),
+        #         self.get_geom_com("1_e3"),
+        #         self.get_geom_com("1_e4"),
+        #         self.get_body_com("0_r_shoulder_pan_link"),
+        #         self.get_body_com("1_r_shoulder_pan_link"),
+        #         self.get_geom_com("0_sword_tip"),
+        #         self.get_geom_com("1_sword_tip")
+        #     ]
+        # )
+    def _get_obs_agent1(self):
+        return self._get_obs(agent=1)
+    def _get_rel_pos(self, base_pos, rel_pos, agent=0):
+        rel_vector = rel_pos - base_pos
+        if agent == 0:
+            return rel_vector
+        else:
+            return - rel_vector
+        
+    def _get_opponent_action(self):
+        if self.step_count < self.first_state_step:
+            return np.zeros(self.env_action_space_shape//2)
+        elif self.step_count > self.last_model_update_step + self.alter_state_step:
+            # print("update oppent model")
+            self.last_model_update_step = self.step_count
+            self.oppent_model = self.find_last_model()
+            opp_action,_ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+            return opp_action
+        elif self.oppent_model is not None:
+            opp_action,_ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+            return opp_action
+        else:
+            return np.zeros(self.env_action_space_shape//2)
+    def find_last_model(self):
+        most_recent_file = None
+        most_recent_time = 0
+        # iterate over the files in the directory using os.scandir
+        for entry in os.scandir(self.save_model_dir):
+            if entry.is_file():
+                # get the modification time of the file using entry.stat().st_mtime_ns
+                mod_time = entry.stat().st_mtime_ns
+                if mod_time > most_recent_time:
+                    # update the most recent file and its modification time
+                    most_recent_file = entry.name
+                    most_recent_time = mod_time
+        # print("most_recent_file",most_recent_file)
+        # print(f"{self.save_model_dir}/{most_recent_file}")
+        return self.method.load(f"{self.save_model_dir}/{most_recent_file}",device=self.device, verbose=0)

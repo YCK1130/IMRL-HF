@@ -37,7 +37,7 @@ def train(env, sb3_algo):
 
         model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False)
         model.save(f"{model_dir}/{sb3_algo}_{TIMESTEPS*iters}")
-        # break
+        
 
 
 def test(env, sb3_algo, path_to_model):
@@ -80,9 +80,19 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--test', metavar='path_to_model')
     args = parser.parse_args()
 
+    
+    # FIX_MODEL = PPO.load('models/PPO_1000000')
+    # print(FIX_MODEL.policy)
+    # print(FIX_MODEL.predict([0]*59,deterministic=True))
+    # print("DONE")
     if args.train:
         gymenv = gym.make("Fencer", render_mode=None)
+        gymenv.first_state_step = 1e4
+        gymenv.alter_state_step = 5e3
+        print(gymenv.action_space, gymenv.observation_space)
+        print(gymenv)
         train(gymenv, args.sb3_algo)
+
 
     if (args.test):
         if os.path.isfile(args.test):
