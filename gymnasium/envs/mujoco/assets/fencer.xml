@@ -22,7 +22,7 @@
       <geom name="0_e2p" type="sphere" rgba="0.1 0.1 0.1 1" pos=" 0.06 0.09 0.2" size="0.03" conaffinity="1"/>
       <geom name="0_e3" type="sphere" rgba="0.6 0.6 0.6 1" pos="-0.06 0.05 -0.2" size="0.05" conaffinity="1"/>
       <geom name="0_e4" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 0.06 0.05 -0.2" size="0.05" conaffinity="1"/> 
-      <geom name="0_sp" type="capsule" fromto="0 0 -0.4 0 0 0.2" size="0.1" conaffinity="1"/>
+      <geom name="0_sp" type="capsule" rgba="0.6 0.6 0.6 1" fromto="0 0 -0.4 0 0 0.2" size="0.1" conaffinity="1"/>
       <joint name="0_r_shoulder_pan_joint" type="hinge" pos="0 0 0" axis="0 0 1" range="-2.2854 1.714602" damping="1.0" />
 
       <body name="0_r_shoulder_lift_link" pos="0 0 0" axisangle="0 0 1 1.57079">

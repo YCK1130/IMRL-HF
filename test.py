@@ -1,6 +1,6 @@
 import gymnasium as gym
 # env = gym.make('Ant-v4')
-env = gym.make('Ant-v4', render_mode='human')
+env = gym.make('Fencer', render_mode='human')
 # env = gym.make('Ant-v4', render_mode="rgb_array")
 
 env.reset()

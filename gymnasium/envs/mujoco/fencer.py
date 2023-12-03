@@ -219,7 +219,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         action space, since we are only controlling one arm
         '''
         # check action space
-        assert len(self.action_space.shape) >= 1
+        assert self.action_space.shape and len(self.action_space.shape) >= 1
         env_action_space_shape = self.action_space.shape[0]
         self.env_action_space_shape = env_action_space_shape
         self.env_action_space = self.action_space
@@ -237,7 +237,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         # self.init_direction = np.array([1, 0, 0])
         self.target_point = ["e1", "e2", "e3", "e4","sp0"]
         self.attact_point = "sword_tip"
-        self.center_point = "sp0"
+        self.center_point = "sp"
         
         self.step_count = 0
         self.first_state_step = first_state_step
@@ -276,10 +276,12 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self.get_geom_com(f"{agent}_{point}"),
                 opponent
                 )]
-        penalty_1 = self.get_body_com(
-            "0_r_shoulder_pan_link") - self.get_geom_com("1_sword_tip")
-        penalty_2 = self.get_body_com(
-            "1_r_shoulder_pan_link") - self.get_geom_com("0_sword_tip")
+        penalty_1 = self.get_geom_com(
+            f"{agent}_{self.center_point}") - self.get_geom_com(f"{opponent}_{self.attact_point}")
+        penalty_2 = self.get_geom_com(
+            f"{opponent}_{self.center_point}") - self.get_geom_com(f"{agent}_{self.attact_point}")
+        penalty_1[-1] = max(0.0, abs(penalty_1[-1])-0.3)
+        penalty_2[-1] = max(0.0, abs(penalty_2[-1])-0.3)
         # vec_9 = self.get_geom_com("1_sword_tip")-self.get_body_com()
         reward_match = 0
 
@@ -297,14 +299,17 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_far_mirror = - \
             np.linalg.norm(penalty_1) * self._reward_dist_weight
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
-        if penalty_far > -2:
+        if penalty_far > -0.11:
+            penalty_far = 1 # attack success
+            # print("ATTACKING")
+        elif penalty_far > -2:
             penalty_far = 0
-        elif abs(penalty_far) < 0.1:
-            penalty_far = 1
-        if penalty_far_mirror > -2:
+        if penalty_far_mirror > -0.11:
+            penalty_far_mirror = -1 # attacked
+            # print("ATTACKED")
+        else:
             penalty_far_mirror = 0
-        elif abs(penalty_far_mirror) < 0.1:
-            penalty_far_mirror = 1
+            
 
         # change action space back to original, for the mujoco env
         temp_action_space = self.action_space
@@ -315,7 +320,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.action_space = temp_action_space
 
         observation = self._get_obs()
-        reward = reward_ctrl + reward_near
+        reward = reward_ctrl + reward_near + penalty_far_mirror + penalty_far
         info = {
             # "reward_near_mirror": reward_near_mirror,
             "reward_ctrl": reward_ctrl,
