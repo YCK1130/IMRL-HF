@@ -220,10 +220,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return self.data.geom(geom_name).xpos
 
     def step(self, action):
-        vec_1 = self.get_geom_com("mirror_sword_blade") - \
-            self.get_geom_com("sword_blade")
+        vec_1 = self.get_geom_com("1_sword_blade") - \
+            self.get_geom_com("0_sword_blade")
         # vec_2 = self.get_body_com("object") - self.get_body_com("goal")
-        # print(self.get_geom_com("sword_blade"))
+        # print(self.get_geom_com("0_sword_blade"))
         reward_near = -np.linalg.norm(vec_1) * self._reward_near_weight
         # reward_dist = -np.linalg.norm(vec_2) * self._reward_dist_weight
         reward_ctrl = -np.square(action).sum() * self._reward_control_weight
@@ -269,8 +269,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             [
                 self.data.qpos.flat[:7],
                 self.data.qvel.flat[:7],
-                self.get_geom_com("sword_blade"),
-                self.get_geom_com("mirror_sword_blade"),
-                self.get_body_com("goal"),
+                self.get_geom_com("0_sword_blade"),
+                self.get_geom_com("1_sword_blade"),
+                # self.get_body_com("goal"),
             ]
         )
