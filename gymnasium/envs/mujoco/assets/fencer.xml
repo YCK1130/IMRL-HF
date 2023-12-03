@@ -24,21 +24,21 @@
       <geom name="0_e4" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 0.06 0.05 -0.2" size="0.05" conaffinity="1"/> 
       <geom name="0_sp" type="capsule" rgba="0.6 0.6 0.6 1" fromto="0 0 -0.4 0 0 0.2" size="0.1" conaffinity="1"/>
       <joint name="0_r_shoulder_pan_joint" type="hinge" pos="0 0 0" axis="0 0 1" range="-2.2854 1.714602" damping="1.0" />
-
-      <body name="0_r_shoulder_lift_link" pos="0 0 0" axisangle="0 0 1 1.57079">
-        <geom name="0_sl" type="capsule" fromto="0 -0.3 0 0 0.3 0" size="0.1" conaffinity="1"/>
+      
+      <body name="0_r_shoulder_lift_link" pos="0 0 0" axisangle="1 0 0 -1.57079">
+        <geom name="0_sl" type="capsule" fromto="-0.3 0 0 0.3 0 0" size="0.1" conaffinity="1"/>
         <joint name="0_r_shoulder_lift_joint" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.5236 1.3963" damping="1.0" />
 
-        <body name="0_r_upper_arm_roll_link" pos="0 -0.3 0">
+        <body name="0_r_upper_arm_roll_link" pos="0.3 0 0" axisangle="0 0 1 1.57079">
           <geom name="0_uar" type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.02" conaffinity="1"/>
           <joint name="0_r_upper_arm_roll_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-1.5 1.7" damping="0.1" />
 
           <body name="0_r_upper_arm_link" pos="0 0 0">
             <geom name="0_ua" type="capsule" fromto="0 0 0 0.4 0 0" size="0.06" conaffinity="1"/>
 
-            <body name="0_r_elbow_flex_link" pos="0.4 0 0">
+            <body name="0_r_elbow_flex_link" pos="0.4 0 0" axisangle="0 1 0 -2.7">
               <geom name="0_ef" type="capsule" fromto="0 -0.02 0 0.0 0.02 0" size="0.06" conaffinity="1"/>
-              <joint name="0_r_elbow_flex_joint" type="hinge" pos="0 0 0" axis="0 1 0" range="-2.3213 0" damping="0.1" />
+              <joint name="0_r_elbow_flex_joint" type="hinge" pos="0 0 0" axis="0 1 0" range="0.3787 2.7" damping="0.1" />
 
               <body name="0_r_forearm_roll_link" pos="0 0 0">
                 <geom name="0_fr" type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.02" />

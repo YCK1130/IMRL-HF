@@ -260,6 +260,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return self.data.geom(geom_name).xpos
 
     def step(self, action):
+        attacked = False
         self.step_count += 1
         vecs_1 = []
         vecs_2 = []
@@ -306,6 +307,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             penalty_far = 0
         if penalty_far_mirror > -0.11:
             penalty_far_mirror = -1 # attacked
+            attacked = True
             # print("ATTACKED")
         else:
             penalty_far_mirror = 0
@@ -330,11 +332,11 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         }
         if self.render_mode == "human":
             self.render()
-        return observation, reward, False, False, info
+        return observation, reward, attacked, False, info
 
     def reset_model(self):
         # self.step_count = 0
-        # print("reset model")
+        # print("reset model@ ",self.step_count)
         qpos = self.init_qpos
 
         self.goal_pos = np.asarray([0, 0])

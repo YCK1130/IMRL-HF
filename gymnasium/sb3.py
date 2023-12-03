@@ -30,13 +30,13 @@ def train(env, sb3_algo):
             print('Algorithm not found')
             return
 
-    TIMESTEPS = 100000
+    TIMESTEPS = 1e5
     iters = 0
     while True:
         iters += 1
 
         model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False)
-        model.save(f"{model_dir}/{sb3_algo}_{TIMESTEPS*iters}")
+        model.save(f"{model_dir}/{sb3_algo}_{int(TIMESTEPS*iters)}")
         
 
 
@@ -87,8 +87,6 @@ if __name__ == '__main__':
     # print("DONE")
     if args.train:
         gymenv = gym.make("Fencer", render_mode=None)
-        gymenv.first_state_step = 1e4
-        gymenv.alter_state_step = 5e3
         print(gymenv.action_space, gymenv.observation_space)
         print(gymenv)
         train(gymenv, args.sb3_algo)
