@@ -1,11 +1,11 @@
 __credits__ = ["Kallinteris-Andreas"]
 
 from typing import Dict
-
+import math
 import numpy as np
 import os
 from stable_baselines3 import SAC, TD3, A2C, PPO
-
+import wandb
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Box
@@ -177,15 +177,15 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self,
         xml_file: str = "fencer.xml",
         save_model_dir: str = "models",
-        method = PPO,
-        device: str ='cuda',
+        method=PPO,
+        device: str = 'cuda',
         frame_skip: int = 5,
         default_camera_config: Dict[str, float] = DEFAULT_CAMERA_CONFIG,
         reward_near_weight: float = 0.5,
         reward_dist_weight: float = 1,
         reward_control_weight: float = 0.1,
-        first_state_step: int = 1e6,
-        alter_state_step: int = 5e4,
+        first_state_step: int = 1e3,
+        alter_state_step: int = 5e2,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -225,7 +225,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.env_action_space = self.action_space
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
         low, high = bounds.T
-        low, high = low[:env_action_space_shape//2], high[:env_action_space_shape//2]
+        low, high = low[:env_action_space_shape //
+                        2], high[:env_action_space_shape//2]
         self.action_space = Box(low=low, high=high, dtype=np.float32)
         print(self.env_action_space)
         print(self.action_space)
@@ -236,21 +237,23 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
         # self.init_direction = np.array([1, 0, 0])
         self.target_point = ["target1", "target2", "target0"]
+        self.target_weight = [1, 1, 1]
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
-        
+
         self.step_count = 0
         self.first_state_step = int(first_state_step)
         self.alter_state_step = int(alter_state_step)
-        print("first_state_step: ",self.first_state_step)
-        print("alter_state_step: ",self.alter_state_step)
+        print("first_state_step: ", self.first_state_step)
+        print("alter_state_step: ", self.alter_state_step)
         self.last_model_update_step = 0
         self.save_model_dir = save_model_dir
         self.most_recent_file = None
         self.oppent_model = None
         self.method = method
         self.device = device
-
+        self.eps_stepcnt = 0
+        self.eps_reward = 0
         self.agent0_attacked = False
         self.agent1_attacked = False
         self.init_extra_step_after_done = 60
@@ -269,22 +272,27 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
     def step(self, action):
         attacked = False
+        self.eps_stepcnt += 1
         self.step_count += 1
         vecs_1 = []
         vecs_2 = []
         agent = 0
         opponent = 1 - agent
-        for point in self.target_point:
-            vecs_1 += [self._get_rel_pos( \
+        for i in range(len(self.target_point)):
+            point = self.target_point[i]
+            weight = 1
+            if self.eps_stepcnt > 200:
+                weight = 2
+            vecs_1 += [weight*self._get_rel_pos(
                 self.get_geom_com(f"{agent}_{self.attact_point}"),
                 self.get_geom_com(f"{opponent}_{point}"),
                 agent
-                )]
-            vecs_2 += [self._get_rel_pos( \
+            )]
+            vecs_2 += [weight*self._get_rel_pos(
                 self.get_geom_com(f"{opponent}_{self.attact_point}"),
                 self.get_geom_com(f"{agent}_{point}"),
                 opponent
-                )]
+            )]
         penalty_1 = self.get_geom_com(
             f"{agent}_{self.center_point}") - self.get_geom_com(f"{opponent}_{self.attact_point}")
         penalty_2 = self.get_geom_com(
@@ -304,22 +312,23 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_near /= 3
         reward_near_mirror /= 3
 
-        reward_ctrl = -np.square(action).sum() * self._reward_control_weight
+        reward_ctrl = -np.square(action).sum() * \
+            self._reward_control_weight*0.5
         penalty_far_mirror = - \
             np.linalg.norm(penalty_1) * self._reward_dist_weight
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
         # print(penalty_far)
         if penalty_far > -0.11:
-            penalty_far = 0 
-            self.agent1_attacked = True # attack success
-            print(f"agent {opponent} ATTACKED by {agent}")
+            penalty_far = 0
+            self.agent1_attacked = True  # attack success
+            # print(f"agent {opponent} ATTACKED by {agent}")
         elif penalty_far > -1.2:
             penalty_far = 0
         if penalty_far_mirror > -0.11:
-            self.agent0_attacked = True # attacked
-            print(f"agent {agent} ATTACKED by {opponent}")
+            self.agent0_attacked = True  # attacked
+
+            # print(f"agent {agent} ATTACKED by {opponent}")
         penalty_far_mirror = 0
-            
 
         # change action space back to original, for the mujoco env
         temp_action_space = self.action_space
@@ -340,14 +349,21 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "penaly_far": penalty_far
         }
         done = False
+        self.eps_reward += reward
         if self.agent0_attacked or self.agent1_attacked:
             self.extra_step_after_done -= 1
             if self.extra_step_after_done < 0:
                 self.extra_step_after_done = self.init_extra_step_after_done
                 done = True
-                reward += int(self.agent1_attacked) - int(self.agent0_attacked)
+                wandb.log({"eps_reward": self.eps_reward/self.eps_stepcnt})
+                self.eps_reward = 0
+                self.eps_stepcnt = 0
+
+                reward += int(self.agent1_attacked) - \
+                    5*int(self.agent0_attacked)
         if self.render_mode == "human":
             self.render()
+        wandb.log({"reward": reward})
         return observation, reward, done, False, info
 
     def reset_model(self):
@@ -383,71 +399,58 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
         assert len(self.data.qpos) % 2 == 0
         if agent == 0:
-            actuator_state = (0,len(self.data.qpos)//2)
+            actuator_state = (0, len(self.data.qpos)//2)
         else:
-            actuator_state = (len(self.data.qpos)//2,len(self.data.qpos))
+            actuator_state = (len(self.data.qpos)//2, len(self.data.qpos))
         ''' joint state '''
         obs = np.concatenate([self.data.qpos.flat[actuator_state[0]:actuator_state[1]],
-                self.data.qvel.flat[actuator_state[0]:actuator_state[1]],])
+                              self.data.qvel.flat[actuator_state[0]:actuator_state[1]],])
         ''' tip state '''
-        obs = np.concatenate([obs, self._get_rel_pos( \
-                self.get_geom_com(f"{agent}_{self.center_point}"),
-                self.get_geom_com(f"{agent}_{self.attact_point}"),
-                agent
-                )])
+        obs = np.concatenate([obs, self._get_rel_pos(
+            self.get_geom_com(f"{agent}_{self.center_point}"),
+            self.get_geom_com(f"{agent}_{self.attact_point}"),
+            agent
+        )])
         ''' opponent state relative to agent tip '''
         opponent = 1-agent
         for point in self.target_point:
-            obs = np.concatenate([obs, self._get_rel_pos( \
+            obs = np.concatenate([obs, self._get_rel_pos(
                 self.get_geom_com(f"{agent}_{self.attact_point}"),
                 self.get_geom_com(f"{opponent}_{point}"),
                 agent
-                )])
+            )])
         # print("obs.shape",obs.shape) # (32,)
         return obs.astype(np.float32)
-        # return np.concatenate(
-        #     [
-        #         self.data.qpos.flat[:7],
-        #         self.data.qvel.flat[:7],
-        #         self.get_geom_com("0_sword_blade"),
-        #         self.get_geom_com("1_sword_blade"),
-        #         self.get_geom_com("0_e1"),
-        #         self.get_geom_com("0_e2"),
-        #         self.get_geom_com("0_e3"),
-        #         self.get_geom_com("0_e4"),
-        #         self.get_geom_com("1_e1"),
-        #         self.get_geom_com("1_e2"),
-        #         self.get_geom_com("1_e3"),
-        #         self.get_geom_com("1_e4"),
-        #         self.get_body_com("0_r_shoulder_pan_link"),
-        #         self.get_body_com("1_r_shoulder_pan_link"),
-        #         self.get_geom_com("0_sword_tip"),
-        #         self.get_geom_com("1_sword_tip")
-        #     ]
-        # )
+
     def _get_obs_agent1(self):
         return self._get_obs(agent=1)
+
     def _get_rel_pos(self, base_pos, rel_pos, agent=0):
         rel_vector = rel_pos - base_pos
         if agent == 0:
             return rel_vector
         else:
             return - rel_vector
-        
+
     def _get_opponent_action(self):
         if self.step_count < self.first_state_step:
             return np.zeros(self.env_action_space_shape//2)
-        elif self.step_count > self.last_model_update_step + self.alter_state_step:
+        elif self.step_count > self.last_model_update_step + self.alter_state_step and self.oppent_model is not None:
             # print("update oppent model")
             self.last_model_update_step = self.step_count
             self.oppent_model = self.find_last_model()
-            opp_action,_ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+            opp_action, _ = self.oppent_model.predict(
+                self._get_obs_agent1(), deterministic=True)
+            # print(opp_action)
             return opp_action
         elif self.oppent_model is not None:
-            opp_action,_ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+            opp_action, _ = self.oppent_model.predict(
+                self._get_obs_agent1(), deterministic=True)
+            # print(opp_action)
             return opp_action
         else:
             return np.zeros(self.env_action_space_shape//2)
+
     def find_last_model(self):
         most_recent_file = None
         most_recent_time = 0
@@ -462,7 +465,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                     most_recent_time = mod_time
         if most_recent_file == self.most_recent_file:
             return self.oppent_model
-        print("most_recent_file",most_recent_file)
+        print("most_recent_file", most_recent_file)
         print(f"{self.save_model_dir}/{most_recent_file}")
         self.most_recent_file = most_recent_file
-        return self.method.load(f"{self.save_model_dir}/{most_recent_file}",device=self.device, verbose=0)
+        return self.method.load(f"{self.save_model_dir}/{most_recent_file}", device=self.device, verbose=0)
