@@ -251,6 +251,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.method = method
         self.device = device
 
+        self.agent0_attacked = False
+        self.agent1_attacked = False
         self.init_extra_step_after_done = 60
         self.extra_step_after_done = self.init_extra_step_after_done
         self.metadata = {
@@ -307,17 +309,15 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             np.linalg.norm(penalty_1) * self._reward_dist_weight
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
         if penalty_far > -0.11:
-            penalty_far = 1 # attack success
-            attacked = True
-            print("agent 0 ATTACKED")
-        elif penalty_far > -2:
+            penalty_far = 0 
+            self.agent1_attacked = True # attack success
+            print(f"agent {opponent} ATTACKED by {agent}")
+        elif penalty_far > -1.2:
             penalty_far = 0
         if penalty_far_mirror > -0.11:
-            penalty_far_mirror = -1 # attacked
-            attacked = True
-            print("agent 1 ATTACKED")
-        else:
-            penalty_far_mirror = 0
+            self.agent0_attacked = True # attacked
+            print(f"agent {agent} ATTACKED by {opponent}")
+        penalty_far_mirror = 0
             
 
         # change action space back to original, for the mujoco env
@@ -338,22 +338,26 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "penalty_far_mirror": penalty_far_mirror,
             "penaly_far": penalty_far
         }
-
-        if attacked or self.extra_step_after_done < self.init_extra_step_after_done:
+        done = False
+        if self.agent0_attacked or self.agent1_attacked:
             self.extra_step_after_done -= 1
-            attacked = False
             if self.extra_step_after_done < 0:
                 self.extra_step_after_done = self.init_extra_step_after_done
-                attacked = True
+                done = True
+                reward += int(self.agent1_attacked) - int(self.agent0_attacked)
         if self.render_mode == "human":
             self.render()
-        return observation, reward, attacked, False, info
+        return observation, reward, done, False, info
 
     def reset_model(self):
         # self.step_count = 0
         # print("reset model@ ",self.step_count)
         qpos = self.init_qpos
         qvel = self.init_qvel
+        self.agent0_attacked = False
+        self.agent1_attacked = False
+        self.init_extra_step_after_done = 60
+        self.extra_step_after_done = self.init_extra_step_after_done
         # self.goal_pos = np.asarray([0, 0])
         # while True:
         #     self.cylinder_pos = np.concatenate(
