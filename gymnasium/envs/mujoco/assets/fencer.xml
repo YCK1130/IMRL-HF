@@ -140,7 +140,63 @@
 		<motor ctrllimited="true" ctrlrange="-2.0 2.0" joint="1_r_wrist_roll_joint" />
 	</actuator>
 	<contact>
-		<pair geom1="0_sword_blade" geom2="1_sword_blade" name="blade_contact">
-		</pair>
+		<pair geom1="0_sword_blade" geom2="1_sword_blade" name="blade0_contact" />
+		<pair geom1="0_sword_blade" geom2="1_y_slide" name="blade0_slide_contact" />
+		<pair geom1="0_sword_blade" geom2="1_shoulder_pan" name="blade0_sp_contact" />
+		<pair geom1="0_sword_blade" geom2="1_shoulder_lift" name="blade0_sl_contact" />
+		<pair geom1="0_sword_blade" geom2="1_upper_arm_roll" name="blade0_uar_contact" />
+		<pair geom1="0_sword_blade" geom2="1_upper_arm" name="blade0_ua_contact" />
+		<pair geom1="0_sword_blade" geom2="1_elbow_flex" name="blade0_ef_contact" />
+		<pair geom1="0_sword_blade" geom2="1_forearm_roll" name="blade0_fr_contact" />
+		<pair geom1="0_sword_blade" geom2="1_forearm" name="blade0_forearm_contact" />
+		<pair geom1="0_sword_blade" geom2="1_wrist_flex" name="blade0_wf_contact" />
+		<pair geom1="0_sword_blade" geom2="1_sword_handle" name="blade0_handle_contact" />
+		<pair geom1="1_sword_blade" geom2="0_sword_blade" name="blade1_contact" />
+		<pair geom1="1_sword_blade" geom2="0_y_slide" name="blade1_slide_contact" />
+		<pair geom1="1_sword_blade" geom2="0_shoulder_pan" name="blade1_sp_contact" />
+		<pair geom1="1_sword_blade" geom2="0_shoulder_lift" name="blade1_sl_contact" />
+		<pair geom1="1_sword_blade" geom2="0_upper_arm_roll" name="blade1_uar_contact" />
+		<pair geom1="1_sword_blade" geom2="0_upper_arm" name="blade1_ua_contact" />
+		<pair geom1="1_sword_blade" geom2="0_elbow_flex" name="blade1_ef_contact" />
+		<pair geom1="1_sword_blade" geom2="0_forearm_roll" name="blade1_fr_contact" />
+		<pair geom1="1_sword_blade" geom2="0_forearm" name="blade1_forearm_contact" />
+		<pair geom1="1_sword_blade" geom2="0_wrist_flex" name="blade1_wf_contact" />
+		<pair geom1="1_sword_blade" geom2="0_sword_handle" name="blade1_handle_contact" />
+		<pair geom1="0_forearm" geom2="1_y_slide" name="arm0_slide_contact" />
+		<pair geom1="0_forearm" geom2="1_shoulder_pan" name="arm0_sp_contact" />
+		<pair geom1="0_forearm" geom2="1_shoulder_lift" name="arm0_sl_contact" />
+		<pair geom1="0_forearm" geom2="1_upper_arm_roll" name="arm0_uar_contact" />
+		<pair geom1="0_forearm" geom2="1_upper_arm" name="arm0_ua_contact" />
+		<pair geom1="0_forearm" geom2="1_elbow_flex" name="arm0_ef_contact" />
+		<pair geom1="0_forearm" geom2="1_forearm_roll" name="arm0_fr_contact" />
+		<pair geom1="0_forearm" geom2="1_forearm" name="arm0_forearm_contact" />
+		<pair geom1="0_forearm" geom2="1_wrist_flex" name="arm0_wf_contact" />
+		<pair geom1="0_forearm" geom2="1_sword_handle" name="arm0_handle_contact" />
+		<pair geom1="1_forearm" geom2="0_y_slide" name="arm1_slide_contact" />
+		<pair geom1="1_forearm" geom2="0_shoulder_pan" name="arm1_sp_contact" />
+		<pair geom1="1_forearm" geom2="0_shoulder_lift" name="arm1_sl_contact" />
+		<pair geom1="1_forearm" geom2="0_upper_arm_roll" name="arm1_uar_contact" />
+		<pair geom1="1_forearm" geom2="0_upper_arm" name="arm1_ua_contact" />
+		<pair geom1="1_forearm" geom2="0_elbow_flex" name="arm1_ef_contact" />
+		<pair geom1="1_forearm" geom2="0_forearm_roll" name="arm1_fr_contact" />
+		<pair geom1="1_forearm" geom2="0_forearm" name="arm1_forearm_contact" />
+		<pair geom1="1_forearm" geom2="0_wrist_flex" name="arm1_wf_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_y_slide" name="shoulder0_slide_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_shoulder_pan" name="shoulder0_sp_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_shoulder_lift" name="shoulder0_sl_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_upper_arm_roll" name="shoulder0_uar_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_upper_arm" name="shoulder0_ua_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_elbow_flex" name="shoulder0_ef_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_forearm_roll" name="shoulder0_fr_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_wrist_flex" name="shoulder0_wf_contact" />
+		<pair geom1="0_shoulder_lift" geom2="1_sword_handle" name="shoulder0_handle_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_y_slide" name="shoulder1_slide_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_shoulder_pan" name="shoulder1_sp_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_upper_arm_roll" name="shoulder1_uar_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_upper_arm" name="shoulder1_ua_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_elbow_flex" name="shoulder1_ef_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_forearm_roll" name="shoulder1_fr_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_wrist_flex" name="shoulder1_wf_contact" />
+		<pair geom1="1_shoulder_lift" geom2="0_sword_handle" name="shoulder1_handle_contact" />
 	</contact>
 </mujoco>

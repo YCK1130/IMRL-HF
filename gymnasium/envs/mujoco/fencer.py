@@ -308,6 +308,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_far_mirror = - \
             np.linalg.norm(penalty_1) * self._reward_dist_weight
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
+        # print(penalty_far)
         if penalty_far > -0.11:
             penalty_far = 0 
             self.agent1_attacked = True # attack success
