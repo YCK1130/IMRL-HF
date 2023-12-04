@@ -8,5 +8,12 @@ from gymnasium.wrappers import TimeLimit, RecordVideo, RecordEpisodeStatistics
 
 gymenv = gym.make("Fencer", render_mode="human")
 gymenv.reset()
+count = 0
+action = [1]*8
 while True:
     gymenv.render()
+    count += 1
+    # if count % 10 == 0:
+    # action[0] = 1
+    # print(action)
+    gymenv.step(action)

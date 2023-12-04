@@ -227,8 +227,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         low, high = bounds.T
         low, high = low[:env_action_space_shape//2], high[:env_action_space_shape//2]
         self.action_space = Box(low=low, high=high, dtype=np.float32)
-        # print(self.env_action_space)
-        # print(self.action_space)
+        print(self.env_action_space)
+        print(self.action_space)
         # print(self.observation_space)
 
         # print(len(self.data.qpos))
@@ -240,8 +240,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.center_point = "sp"
         
         self.step_count = 0
-        self.first_state_step = first_state_step
-        self.alter_state_step = alter_state_step
+        self.first_state_step = int(first_state_step)
+        self.alter_state_step = int(alter_state_step)
+        print("first_state_step: ",self.first_state_step)
+        print("alter_state_step: ",self.alter_state_step)
         self.last_model_update_step = 0
         self.save_model_dir = save_model_dir
         self.oppent_model = None
@@ -302,6 +304,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_far = - np.linalg.norm(penalty_2) * self._reward_dist_weight
         if penalty_far > -0.11:
             penalty_far = 1 # attack success
+            attacked = True
             # print("ATTACKING")
         elif penalty_far > -2:
             penalty_far = 0
@@ -317,6 +320,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         temp_action_space = self.action_space
         self.action_space = self.env_action_space
         total_action = np.concatenate([action, self._get_opponent_action()])
+        print("total_action",total_action)
         self.do_simulation(total_action, self.frame_skip)
         # change action space back to model env (one model)
         self.action_space = temp_action_space
@@ -338,24 +342,24 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         # self.step_count = 0
         # print("reset model@ ",self.step_count)
         qpos = self.init_qpos
+        qvel = self.init_qvel
+        # self.goal_pos = np.asarray([0, 0])
+        # while True:
+        #     self.cylinder_pos = np.concatenate(
+        #         [
+        #             self.np_random.uniform(low=-0.3, high=0, size=1),
+        #             self.np_random.uniform(low=-0.2, high=0.2, size=1),
+        #         ]
+        #     )
+        #     if np.linalg.norm(self.cylinder_pos - self.goal_pos) > 0.17:
+        #         break
 
-        self.goal_pos = np.asarray([0, 0])
-        while True:
-            self.cylinder_pos = np.concatenate(
-                [
-                    self.np_random.uniform(low=-0.3, high=0, size=1),
-                    self.np_random.uniform(low=-0.2, high=0.2, size=1),
-                ]
-            )
-            if np.linalg.norm(self.cylinder_pos - self.goal_pos) > 0.17:
-                break
-
-        qpos[-4:-2] = self.cylinder_pos
-        qpos[-2:] = self.goal_pos
-        qvel = self.init_qvel + self.np_random.uniform(
-            low=-0.005, high=0.005, size=self.model.nv
-        )
-        qvel[-4:] = 0
+        # qpos[-4:-2] = self.cylinder_pos
+        # qpos[-2:] = self.goal_pos
+        # qvel = self.init_qvel + self.np_random.uniform(
+        #     low=-0.005, high=0.005, size=self.model.nv
+        # )
+        # qvel[-4:] = 0
         self.set_state(qpos, qvel)
         return self._get_obs()
 

@@ -36,7 +36,7 @@ def train(env, sb3_algo):
         iters += 1
 
         model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False)
-        model.save(f"{model_dir}/{sb3_algo}_{int(TIMESTEPS*iters)}")
+        model.save(f"{model_dir}/new_{sb3_algo}_{int(TIMESTEPS*iters)}")
         
 
 
