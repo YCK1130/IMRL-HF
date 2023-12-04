@@ -57,16 +57,18 @@ def test(env, sb3_algo, path_to_model):
 
     obs = env.reset()[0]
     done = False
-    extra_steps = 500
+    extra_steps = 60
     while True:
         action, _ = model.predict(obs)
         obs, _, done, _, _ = env.step(action)
 
-        if done:
+        if done or extra_steps < 60:
             extra_steps -= 1
 
             if extra_steps < 0:
-                break
+                obs = env.reset()[0]
+                extra_steps = 60
+                # break
 
 
 if __name__ == '__main__':
@@ -94,7 +96,7 @@ if __name__ == '__main__':
 
     if (args.test):
         if os.path.isfile(args.test):
-            gymenv = gym.make("Fencer", render_mode='human')
+            gymenv = gym.make("Fencer", render_mode='human',first_state_step=1e3,alter_state_step=1e2)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
         else:
             print(f'{args.test} not found.')

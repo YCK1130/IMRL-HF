@@ -203,7 +203,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(34,), dtype=np.float32)
+                                shape=(30,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -235,9 +235,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         # print(self.data)
 
         # self.init_direction = np.array([1, 0, 0])
-        self.target_point = ["e1", "e2", "e3", "e4","sp0"]
+        self.target_point = ["target1", "target2", "target0"]
         self.attact_point = "sword_tip"
-        self.center_point = "sp"
+        self.center_point = "shoulder_pan"
         
         self.step_count = 0
         self.first_state_step = int(first_state_step)
@@ -246,9 +246,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         print("alter_state_step: ",self.alter_state_step)
         self.last_model_update_step = 0
         self.save_model_dir = save_model_dir
+        self.most_recent_file = None
         self.oppent_model = None
         self.method = method
         self.device = device
+
+        self.init_extra_step_after_done = 60
+        self.extra_step_after_done = self.init_extra_step_after_done
         self.metadata = {
             "render_modes": [
                 "human",
@@ -290,13 +294,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
         reward_near_mirror = 0
         reward_near = 0
-        for i in range(4):
+        for i in range(3):
             reward_near_mirror += - \
                 np.linalg.norm(vecs_1[i]) * self._reward_near_weight
             reward_near += - \
                 np.linalg.norm(vecs_2[i]) * self._reward_near_weight
-        reward_near /= 4
-        reward_near_mirror /= 4
+        reward_near /= 3
+        reward_near_mirror /= 3
 
         reward_ctrl = -np.square(action).sum() * self._reward_control_weight
         penalty_far_mirror = - \
@@ -305,13 +309,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if penalty_far > -0.11:
             penalty_far = 1 # attack success
             attacked = True
-            # print("ATTACKING")
+            print("agent 0 ATTACKED")
         elif penalty_far > -2:
             penalty_far = 0
         if penalty_far_mirror > -0.11:
             penalty_far_mirror = -1 # attacked
             attacked = True
-            # print("ATTACKED")
+            print("agent 1 ATTACKED")
         else:
             penalty_far_mirror = 0
             
@@ -320,7 +324,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         temp_action_space = self.action_space
         self.action_space = self.env_action_space
         total_action = np.concatenate([action, self._get_opponent_action()])
-        print("total_action",total_action)
+        # print("total_action",total_action)
         self.do_simulation(total_action, self.frame_skip)
         # change action space back to model env (one model)
         self.action_space = temp_action_space
@@ -334,6 +338,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "penalty_far_mirror": penalty_far_mirror,
             "penaly_far": penalty_far
         }
+
+        if attacked or self.extra_step_after_done < self.init_extra_step_after_done:
+            self.extra_step_after_done -= 1
+            attacked = False
+            if self.extra_step_after_done < 0:
+                self.extra_step_after_done = self.init_extra_step_after_done
+                attacked = True
         if self.render_mode == "human":
             self.render()
         return observation, reward, attacked, False, info
@@ -444,6 +455,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                     # update the most recent file and its modification time
                     most_recent_file = entry.name
                     most_recent_time = mod_time
-        # print("most_recent_file",most_recent_file)
-        # print(f"{self.save_model_dir}/{most_recent_file}")
+        if most_recent_file == self.most_recent_file:
+            return self.oppent_model
+        print("most_recent_file",most_recent_file)
+        print(f"{self.save_model_dir}/{most_recent_file}")
+        self.most_recent_file = most_recent_file
         return self.method.load(f"{self.save_model_dir}/{most_recent_file}",device=self.device, verbose=0)
