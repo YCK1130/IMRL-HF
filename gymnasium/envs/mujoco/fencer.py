@@ -184,8 +184,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_near_weight: float = 0.5,
         reward_dist_weight: float = 1,
         reward_control_weight: float = 0.1,
-        first_state_step: int = 1e3,
-        alter_state_step: int = 5e2,
+        first_state_step: int = 5e5,
+        alter_state_step: int = 5e4,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -281,7 +281,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         for i in range(len(self.target_point)):
             point = self.target_point[i]
             weight = 1
-            if self.eps_stepcnt > 200:
+            if self.eps_stepcnt > 100:
                 weight = 2
             vecs_1 += [weight*self._get_rel_pos(
                 self.get_geom_com(f"{agent}_{self.attact_point}"),
@@ -301,7 +301,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_2[-1] = max(0.0, abs(penalty_2[-1])-0.3)
         # vec_9 = self.get_geom_com("1_sword_tip")-self.get_body_com()
         reward_match = 0
-
+        reward_dodge = 0
         reward_near_mirror = 0
         reward_near = 0
         for i in range(3):
@@ -340,7 +340,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.action_space = temp_action_space
 
         observation = self._get_obs()
-        reward = reward_ctrl + reward_near + penalty_far_mirror + penalty_far
+        reward_dodge = math.log(abs(reward_near), 2)
+        if (reward_dodge > 1):
+            reward_dodge /= 10
+        elif reward_dodge < -2:
+            reward_dodge = -2
+        reward = reward_ctrl + reward_near_mirror + \
+            penalty_far_mirror + penalty_far+reward_dodge
         info = {
             # "reward_near_mirror": reward_near_mirror,
             "reward_ctrl": reward_ctrl,
@@ -355,6 +361,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             if self.extra_step_after_done < 0:
                 self.extra_step_after_done = self.init_extra_step_after_done
                 done = True
+                # print("done")
                 wandb.log({"eps_reward": self.eps_reward/self.eps_stepcnt})
                 self.eps_reward = 0
                 self.eps_stepcnt = 0
@@ -435,8 +442,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
     def _get_opponent_action(self):
         if self.step_count < self.first_state_step:
             return np.zeros(self.env_action_space_shape//2)
-        elif self.step_count > self.last_model_update_step + self.alter_state_step and self.oppent_model is not None:
-            # print("update oppent model")
+        elif self.step_count > self.last_model_update_step + self.alter_state_step:
+            print("update oppent model")
             self.last_model_update_step = self.step_count
             self.oppent_model = self.find_last_model()
             opp_action, _ = self.oppent_model.predict(

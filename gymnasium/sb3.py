@@ -125,7 +125,9 @@ if __name__ == '__main__':
 
     if (args.test):
         if os.path.isfile(args.test):
-            gymenv = gym.make("Fencer", render_mode='human',first_state_step=10,alter_state_step=5)
+            gymenv = gym.make("Fencer", render_mode='human',first_state_step=1000,alter_state_step=500)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
+            wandb.finish()
         else:
             print(f'{args.test} not found.')
+        
