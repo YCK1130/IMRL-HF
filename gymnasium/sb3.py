@@ -7,68 +7,119 @@ import argparse
 from gymnasium.wrappers import TimeLimit, RecordVideo, RecordEpisodeStatistics
 import wandb
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from wandb.integration.sb3 import WandbCallback
+import torch
+from torch import nn
+import spaces
+
 # Create directories to hold models and logs
 model_dir = "models"
 log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
-my_config = {
-    "run_id": "please",
 
-    "algorithm": PPO,
+run_num = 6
+my_config = {
+    "run_id": f"PPO_1209_{run_num}",
     "policy_network": "MlpPolicy",
     "save_path": "models/",
+    "saving_timesteps": 5e4,
+    "device": "cuda",
+    "first_stage_steps": 5e5,
+    "second_stage_alternating_steps": 1e5,
 
-   
+    "testing_first_stage_steps": 0,
+    "testing_second_stage_alternating_steps": 1e6,
+
 }
+
+class CustomCNN(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        This corresponds to the number of unit for the last layer.
+    """
+
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
+        super().__init__(observation_space, features_dim)
+        # We assume CxHxW images (channels first)
+        # Re-ordering will be done by pre-preprocessing or wrapper
+        n_input_channels = observation_space.shape[0]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 16,
+                      kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 16, kernel_size=3, stride=1, padding=0),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            n_flatten = self.cnn(
+                torch.as_tensor(observation_space.sample()[
+                                None]).float()
+            ).shape[1]
+
+        self.linear = nn.Sequential(
+            nn.Linear(n_flatten, features_dim), nn.ReLU())
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        return self.linear(self.cnn(observations))
+
 
 
 def train(env, sb3_algo):
     run = wandb.init(
-        project="assignment_3",
+        project="Fencer",
         config=my_config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-        # id=my_config["run_id"]
+        id=my_config["run_id"]
     )
+    device = my_config['device']
+    policy_network = my_config['policy_network']
     match sb3_algo:
         case 'SAC':
-            model = SAC('MlpPolicy', env, verbose=1,
-                        device='cuda', tensorboard_log=log_dir)
+            model = SAC(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir)
         case 'TD3':
-            model = TD3('MlpPolicy', env, verbose=1,
-                        device='cuda', tensorboard_log=log_dir)
+            model = TD3(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir)
         case 'A2C':
-            model = A2C('MlpPolicy', env, verbose=1,
-                        device='cuda', tensorboard_log=log_dir)
+            model = A2C(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir)
         case 'PPO':
-            model = PPO('MlpPolicy', env, verbose=1,
-                        device='cuda', tensorboard_log=log_dir,
+            model = PPO(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir,
                         )
         case _:
             print('Algorithm not found')
             return
 
-    TIMESTEPS = 1e5
     iters = 0
     while True:
         iters += 1
-
-        model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, callback=WandbCallback(
+        model.learn(total_timesteps=my_config['saving_timesteps'], reset_num_timesteps=False, callback=WandbCallback(
                             gradient_save_freq=100,
                             verbose=2,
                         ))
-        model.save(f"{model_dir}/new_{sb3_algo}_{int(TIMESTEPS*iters)}")
+        model.save(f"{model_dir}/1209_{run_num}_{sb3_algo}_{int(my_config['saving_timesteps']*iters)}")
         
 
 
 def test(env, sb3_algo, path_to_model):
-    run = wandb.init(
-        project="assignment_3",
-        config=my_config,
-        sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-        # id=my_config["run_id"]
-    )
+    # run = wandb.init(
+    #     project="assignment_3",
+    #     config=my_config,
+    #     sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+    #     # id=my_config["run_id"]
+    # )
 
     match sb3_algo:
         case 'SAC':
@@ -92,7 +143,6 @@ def test(env, sb3_algo, path_to_model):
 
         if done or extra_steps < 60:
             extra_steps -= 1
-
             if extra_steps < 0:
                 obs = env.reset()[0]
                 extra_steps = 60
@@ -109,25 +159,31 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--train', action='store_true')
     parser.add_argument('-s', '--test', metavar='path_to_model')
     args = parser.parse_args()
-
     
-    # FIX_MODEL = PPO.load('models/PPO_1000000')
-    # print(FIX_MODEL.policy)
-    # print(FIX_MODEL.predict([0]*59,deterministic=True))
-    # print("DONE")
     if args.train:
-        gymenv = gym.make("Fencer", render_mode=None)
+        gymenv = gym.make("Fencer",
+                          render_mode=None,
+                          first_state_step=my_config['first_stage_steps'],
+                          alter_state_step=my_config['second_stage_alternating_steps'])
         print(gymenv.action_space, gymenv.observation_space)
         print(gymenv)
-        train(gymenv, args.sb3_algo)
-        wandb.finish()
+        rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue...")
+        if rep.lower() != 'y':
+            exit(0)
+        try:
+            train(gymenv, args.sb3_algo)
+            wandb.finish()
+        except KeyboardInterrupt:
+            wandb.finish()
 
 
     if (args.test):
         if os.path.isfile(args.test):
-            gymenv = gym.make("Fencer", render_mode='human',first_state_step=1000,alter_state_step=500)
+            gymenv = gym.make("Fencer", render_mode='human',
+                              first_state_step=my_config['testing_first_stage_steps'],
+                              alter_state_step=my_config['testing_second_stage_alternating_steps'])
             test(gymenv, args.sb3_algo, path_to_model=args.test)
-            wandb.finish()
+            # wandb.finish()
         else:
             print(f'{args.test} not found.')
-        
+
