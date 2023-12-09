@@ -19,12 +19,12 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 6
+run_num = 8
 my_config = {
     "run_id": f"PPO_1209_{run_num}",
     "policy_network": "MlpPolicy",
     "save_path": "models/",
-    "saving_timesteps": 5e4,
+    "saving_timesteps": 1e5,
     "device": "cuda",
     "first_stage_steps": 5e5,
     "second_stage_alternating_steps": 1e5,
@@ -110,7 +110,8 @@ def train(env, sb3_algo):
                             verbose=2,
                         ))
         model.save(f"{model_dir}/1209_{run_num}_{sb3_algo}_{int(my_config['saving_timesteps']*iters)}")
-        
+        if my_config['saving_timesteps']*iters > 2e6:
+            break
 
 
 def test(env, sb3_algo, path_to_model):
@@ -167,7 +168,7 @@ if __name__ == '__main__':
                           alter_state_step=my_config['second_stage_alternating_steps'])
         print(gymenv.action_space, gymenv.observation_space)
         print(gymenv)
-        rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue...")
+        rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
         if rep.lower() != 'y':
             exit(0)
         try:

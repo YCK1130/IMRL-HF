@@ -247,8 +247,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.center_point = "shoulder_pan"
         self.match_reward = {
             "win": 5,
-            "lose": -5/2,
-            "draw": 5/2,
+            "lose": -5,
+            "draw": 5,
         }
         self.agent_attacked = False
         self.oppent_attacked = False
@@ -258,22 +258,23 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         ############################################
         self.target_geom = ["shoulder_pan", "shoulder_lift"]
         self.target_z_constraint_reference_point = ["target0", "target1"] # [lower, upper]
-        self.collide_dist_threshold = 0.5 # min should be 0.3
+        self.collide_dist_threshold = 2 # min should be 0.6
         self.z_nearness_threshold = 0.5 # min should be 0.3
         print("0 attact_geom_id: ",self.get_geom_id(f"{0}_{self.attact_point}"))
         print("0 target_geom_id: ",self.get_geom_id(f"{1}_{self.target_geom[0]}"))
-        self.agent_nearness_threshold = 0.4
+        self.agent_nearness_threshold = 0.1 ## can't be too large
         self.agent_nearness_reward_slope = self._reward_near_weight
-        self.oppent_nearness_threshold = 0.5 # means when the opponent is @ 0.3, the penalty is penalty_threshold
-        self.oppent_nearness_penalty_threshold = -self._reward_dist_weight
-        self.oppent_nearness_exponential_coeff = -3
+        self.agent_nearness_reward_offset = 0.2
+        self.oppent_nearness_threshold = 0.1 # means when the opponent is @ 0.5, the penalty is penalty_threshold ## can't be too large
+        self.oppent_nearness_penalty_threshold = -2
+        self.oppent_nearness_exponential_coeff = -5
         ############################################
         ### learning related properties
         ############################################
         self.step_count = 0
         self.first_state_step = int(first_state_step)
         self.alter_state_step = int(alter_state_step)
-        self.truncated_step = int(2500)
+        self.truncated_step = int(2500) ## not used, override by the env wrapper
         print("first_state_step: ", self.first_state_step)
         print("alter_state_step: ", self.alter_state_step)
         print("truncated_step: ", self.truncated_step)
@@ -290,7 +291,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.eps_reward = 0
         # self.agent0_attacked = False
         # self.agent1_attacked = False
-        self.init_extra_step_after_done = 60
+        self.init_extra_step_after_done = 30
         self.extra_step_after_done = self.init_extra_step_after_done
         print("extra_step_after_done: ",self.extra_step_after_done)
         self.metadata = {
@@ -370,9 +371,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return the nearness reward of the agent to the opponent
 
         @return:
-        -max(0, slope * (nearness - threshold))
+        -max(0, slope * (nearness - threshold)) + offset
         '''
-        return -max(0, self.agent_nearness_reward_slope * (nearness - self.agent_nearness_threshold))
+        return -max(0, self.agent_nearness_reward_slope * (nearness - self.agent_nearness_threshold)) + self.agent_nearness_reward_offset
     def oppent_nearness_penalty(self, nearness, truncated=True):
         '''
         return the penalty of the nearness of the opponent to the agent
@@ -385,8 +386,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         nearness_threshold = self.oppent_nearness_threshold
         exp_coeff = self.oppent_nearness_exponential_coeff
         if truncated:
-            return threshold*min(1,np.exp(max(-20,exp_coeff * (nearness - nearness_threshold))))
-        return threshold*np.exp(max(-20,exp_coeff * (nearness - nearness_threshold)))
+            return threshold*min(1,np.exp(max(-5,exp_coeff * (nearness - nearness_threshold))))
+        return threshold*np.exp(max(-5,exp_coeff * (nearness - nearness_threshold)))
     def step(self, action):
         self.eps_stepcnt += 1
         self.step_count += 1
@@ -461,7 +462,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "agent_attacked": self.agent_attacked,
             "oppent_attacked": self.oppent_attacked,
         }
-        if WANDB_LOG and self.step_count%100: wandb.log(info)
+        if WANDB_LOG and self.step_count%1000==0: wandb.log(info)
         return observation, reward, done, self.eps_stepcnt > self.truncated_step, info
 
     def reset_model(self):
