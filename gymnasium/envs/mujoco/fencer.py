@@ -9,7 +9,7 @@ import wandb
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Box
-
+import enum
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": -1,
@@ -22,6 +22,43 @@ EPISODE_LOG = False
 # WANDB_LOG = True
 def vec_hat(vec):
     return vec / np.linalg.norm(vec)
+class GameStatus():
+    IDLE = 0
+    WIN = 1
+    LOSE = 2
+    DRAW = 3
+    FOUL = 4
+    def __init__(self, name, values):
+        self.name = name
+        self.values = values
+        self.status = self.IDLE
+    def agent_win(self):
+        if self.status in [self.LOSE, self.DRAW]:
+            self.status = self.DRAW
+        elif self.status == self.FOUL:
+            pass
+        else:
+            self.status = self.WIN
+        return self.status
+    def oppent_win(self):
+        if self.status in [self.WIN, self.DRAW]:
+            self.status = self.DRAW
+        elif self.status == self.FOUL:
+            pass
+        else:
+            self.status = self.LOSE
+        return self.status
+    def foul(self):
+        self.status = self.FOUL
+        return self.status
+    def reset(self):
+        self.status = self.IDLE
+        return self.status
+    def __eq__(self, __value: object) -> bool:
+        return self.status == __value
+    def __ne__(self, __value: object) -> bool:
+        return self.status != __value
+
 class FencerEnv(MujocoEnv, utils.EzPickle):
     r"""
     ## Description
@@ -249,9 +286,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "win": 5,
             "lose": -5,
             "draw": 5,
+            "foul": -5,
         }
-        self.agent_attacked = False
-        self.oppent_attacked = False
+        self.GAME_STATUS = GameStatus('Rules', ['WIN', 'LOSE', 'DRAW', 'FOUL'])
         ############################################
         ### target area related properties
         ### agent: 0, opponent: 1
@@ -262,6 +299,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.z_nearness_threshold = 0.5 # min should be 0.3
         print("0 attact_geom_id: ",self.get_geom_id(f"{0}_{self.attact_point}"))
         print("0 target_geom_id: ",self.get_geom_id(f"{1}_{self.target_geom[0]}"))
+        # print(self.data.geom(f"{0}_{self.attact_point}"))
         self.agent_nearness_threshold = 0.1 ## can't be too large
         self.agent_nearness_reward_slope = self._reward_near_weight
         self.agent_nearness_reward_offset = 0.2
@@ -328,7 +366,6 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             # if collision:
             #     print("collide ",contact.dist)
             ### check if in target area
-            collision = collision and np.linalg.norm(contact.dist) < self.collide_dist_threshold
             collision = collision and contact.pos[-1] > z_constraint[0][-1] and contact.pos[-1] < z_constraint[1][-1]
             if collision:
                 if EPISODE_LOG: print(f"agent{agent} collide with target @step={self.eps_stepcnt}")
@@ -432,35 +469,40 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         penalty_oppent_near = ((penalty_oppent_near - old_penalty_oppent_near) <= 0)*penalty_oppent_near
 
         if np.linalg.norm(center_vec_0) < self.collide_dist_threshold:
-            self.agent_attacked = self.agent_attacked or self.collide2target(0)  # attack success
+            if self.collide2target(0):  # attack success
+                self.GAME_STATUS.agent_win()
         if np.linalg.norm(center_vec_1) < self.collide_dist_threshold:
-            self.oppent_attacked = self.oppent_attacked or self.collide2target(1)  # be attacked
+            if self.collide2target(1):  # be attacked
+                self.GAME_STATUS.oppent_win()
 
         reward = reward_ctrl + reward_near + penalty_oppent_near
         done = False
+        # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])
         self.eps_reward += reward
-        if self.agent_attacked or self.oppent_attacked:
+        if self.GAME_STATUS != self.GAME_STATUS.IDLE:
             self.extra_step_after_done -= 1
+            # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])
             if self.extra_step_after_done < 0:
                 done = True
                 match_reward = 0
-                if self.agent_attacked and self.oppent_attacked:
+                if self.GAME_STATUS == self.GAME_STATUS.DRAW:
                     match_reward = self.match_reward["draw"]
-                elif self.agent_attacked:
+                elif self.GAME_STATUS == self.GAME_STATUS.WIN:
                     match_reward = self.match_reward["win"]
-                elif self.oppent_attacked:
+                elif self.GAME_STATUS == self.GAME_STATUS.LOSE:
                     match_reward = self.match_reward["lose"]
+                elif self.GAME_STATUS == self.GAME_STATUS.FOUL:
+                    match_reward = self.match_reward["foul"]
                 reward += match_reward
                 if WANDB_LOG: wandb.log({"eps_reward": (self.eps_reward+match_reward)/self.eps_stepcnt})
         if self.render_mode == "human":
             self.render()
+            self.game_status_indicator(agent)
         info = {
             "reward": reward,
             "reward_ctrl": reward_ctrl,
             "reward_near": reward_near,
             "penalty_oppent_near": penalty_oppent_near,
-            "agent_attacked": self.agent_attacked,
-            "oppent_attacked": self.oppent_attacked,
         }
         if WANDB_LOG and self.step_count%1000==0: wandb.log(info)
         return observation, reward, done, self.eps_stepcnt > self.truncated_step, info
@@ -470,16 +512,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if EPISODE_LOG: print("reset model@ ",self.eps_stepcnt)
         qpos = self.init_qpos
         qvel = self.init_qvel
-        if self.step_count > self.first_state_step:
-            qpos += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qpos))
-            qvel += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qvel))
-
-        # print("qpos, qvel", qpos, qvel)
-        # print(len(qpos), len(qvel))
-        self.agent0_attacked = False
-        self.agent1_attacked = False
-        self.agent_attacked = False
-        self.oppent_attacked = False
+        # if self.step_count > self.first_state_step + self.alter_state_step:
+        #     qpos += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qpos))
+        #     qvel += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qvel))
+        self.GAME_STATUS.reset()
         self.eps_reward = 0
         self.eps_stepcnt = 0
         self.extra_step_after_done = self.init_extra_step_after_done
@@ -521,7 +557,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if agent == 0:
             return rel_vector
         else:
-            return - rel_vector
+            rel_vector[0] = -rel_vector[0]
+            rel_vector[1] = -rel_vector[1]
+            return rel_vector
 
     def _get_opponent_action(self):
         if self.step_count < self.first_state_step:
@@ -529,6 +567,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         elif self.oppent_model is None or self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
             self.oppent_model = self.find_last_model()
+            if self.oppent_model is None:
+                return np.zeros(self.env_action_space_shape//2)
             opp_action, _ = self.oppent_model.predict(
                 self._get_obs_agent1(), deterministic=True)
             # print(opp_action)
@@ -544,6 +584,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
     def find_last_model(self):
         most_recent_file = None
         most_recent_time = 0
+        # return None
         # iterate over the files in the directory using os.scandir
         for entry in os.scandir(self.save_model_dir):
             if entry.is_file():
@@ -559,3 +600,21 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         print(f"restore from {self.save_model_dir}/{most_recent_file}")
         self.most_recent_file = most_recent_file
         return self.method.load(f"{self.save_model_dir}/{most_recent_file}", device=self.device, verbose=0)
+    def game_status_indicator(self, agent=0):
+        status = self.GAME_STATUS.status
+        oppent = 1 - agent
+        agent_indicator_id = self.get_geom_id(f"{agent}_indicator")
+        oppent_indicator_id = self.get_geom_id(f"{oppent}_indicator")
+        if status == self.GAME_STATUS.IDLE:
+            self.model.geom_rgba[agent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
+            self.model.geom_rgba[oppent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
+        elif status == self.GAME_STATUS.WIN:
+            self.model.geom_rgba[agent_indicator_id] = np.array([0, 1, 0, 1]) # green
+        elif status == self.GAME_STATUS.LOSE:
+            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 1, 0, 1]) # yellow
+        elif status == self.GAME_STATUS.DRAW:
+            self.model.geom_rgba[agent_indicator_id] = np.array([0, 0, 1, 1]) # blue
+            self.model.geom_rgba[oppent_indicator_id] = np.array([0, 0, 1, 1]) # blue
+        elif status == self.GAME_STATUS.FOUL:
+            self.model.geom_rgba[agent_indicator_id] = np.array([1, 0, 0, 1]) # red
+            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 0, 0, 1]) # red
