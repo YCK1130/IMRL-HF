@@ -19,9 +19,10 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 8
+run_num = 2
+date = '1211'
 my_config = {
-    "run_id": f"PPO_1209_{run_num}",
+    "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
     "save_path": "models/",
     "saving_timesteps": 1e5,
@@ -31,7 +32,7 @@ my_config = {
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-
+    "comment": "Testing",
 }
 
 class CustomCNN(BaseFeaturesExtractor):
@@ -109,7 +110,7 @@ def train(env, sb3_algo):
                             gradient_save_freq=100,
                             verbose=2,
                         ))
-        model.save(f"{model_dir}/1209_{run_num}_{sb3_algo}_{int(my_config['saving_timesteps']*iters)}")
+        model.save(f"{model_dir}/{date}_{run_num}_{sb3_algo}_{int(my_config['saving_timesteps']*iters)}")
         if my_config['saving_timesteps']*iters > 2e6:
             break
 
@@ -165,9 +166,11 @@ if __name__ == '__main__':
         gymenv = gym.make("Fencer",
                           render_mode=None,
                           first_state_step=my_config['first_stage_steps'],
-                          alter_state_step=my_config['second_stage_alternating_steps'])
+                          alter_state_step=my_config['second_stage_alternating_steps'],
+                          wandb_log=True)
         print(gymenv.action_space, gymenv.observation_space)
         print(gymenv)
+        my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
         rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
         if rep.lower() != 'y':
             exit(0)
@@ -182,7 +185,8 @@ if __name__ == '__main__':
         if os.path.isfile(args.test):
             gymenv = gym.make("Fencer", render_mode='human',
                               first_state_step=my_config['testing_first_stage_steps'],
-                              alter_state_step=my_config['testing_second_stage_alternating_steps'])
+                              alter_state_step=my_config['testing_second_stage_alternating_steps'],
+                              wandb_log=False)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
             # wandb.finish()
         else:

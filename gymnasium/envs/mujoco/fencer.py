@@ -9,17 +9,15 @@ import wandb
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Box
-import enum
+from collections import deque
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": -1,
     "distance": 4.0,
 }
 
-WANDB_LOG = False
 EPISODE_LOG = False
 
-# WANDB_LOG = True
 def vec_hat(vec):
     return vec / np.linalg.norm(vec)
 class GameStatus():
@@ -228,6 +226,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_control_weight: float = 0.1,
         first_state_step: int = 5e5,
         alter_state_step: int = 5e4,
+        wandb_log: bool = False,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -255,7 +254,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             default_camera_config=default_camera_config,
             **kwargs,
         )
-
+        self.wandb_log = wandb_log
+        if self.wandb_log:
+            self.eps_info = np.array([0,0,0,0,0],dtype=np.float32)
+            self.eps_infos = deque(maxlen=50)
         ''' 
         change action space to be half of the original
         action space, since we are only controlling one arm
@@ -494,7 +496,6 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 elif self.GAME_STATUS == self.GAME_STATUS.FOUL:
                     match_reward = self.match_reward["foul"]
                 reward += match_reward
-                if WANDB_LOG: wandb.log({"eps_reward": (self.eps_reward+match_reward)/self.eps_stepcnt})
         if self.render_mode == "human":
             self.render()
             self.game_status_indicator(agent)
@@ -504,7 +505,22 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "reward_near": reward_near,
             "penalty_oppent_near": penalty_oppent_near,
         }
-        if WANDB_LOG and self.step_count%1000==0: wandb.log(info)
+        if self.wandb_log:
+            self.eps_info += np.array([reward, reward_ctrl, reward_near, penalty_oppent_near, self.eps_stepcnt],dtype=np.float32)
+            if done:
+                self.eps_infos.append(self.eps_info)
+                self.eps_info = np.array([0]*len(self.eps_info),dtype=np.float32)
+            if self.step_count%1000==0 and len(self.eps_infos) == self.eps_infos.maxlen: 
+                avg_info = np.average(np.array(self.eps_infos),axis=0)
+                # print("avg_info",avg_info)
+                # print(self.eps_infos)
+                wandb.log({
+                    "reward": avg_info[0],
+                    "reward_ctrl": avg_info[1],
+                    "reward_near": avg_info[2],
+                    "penalty_oppent_near": avg_info[3],
+                    "eps_stepcnt": avg_info[4],
+                })
         return observation, reward, done, self.eps_stepcnt > self.truncated_step, info
 
     def reset_model(self):
