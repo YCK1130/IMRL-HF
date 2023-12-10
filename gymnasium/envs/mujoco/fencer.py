@@ -287,7 +287,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.match_reward = {
             "win": 5,
             "lose": -5,
-            "draw": 5,
+            "draw": 0,
             "foul": -5,
         }
         self.GAME_STATUS = GameStatus('Rules', ['WIN', 'LOSE', 'DRAW', 'FOUL'])
@@ -433,7 +433,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
         agent = 0
         opponent = 1 - agent
-        reward_ctrl = self.control_reward(action) / 5
+        reward_ctrl = self.control_reward(action) / 2
         ### calculate nearness
         nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(agent)
         nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(opponent)

@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 2
+run_num = 3
 date = '1211'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -32,7 +32,15 @@ my_config = {
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": "Testing",
+    "comment": '''
+    no foul, no random reset
+    {
+        "win": 5,
+        "lose": -5,
+        "draw": 0,
+        "foul": -5,
+    }
+    ''',
 }
 
 class CustomCNN(BaseFeaturesExtractor):
@@ -169,7 +177,7 @@ if __name__ == '__main__':
                           alter_state_step=my_config['second_stage_alternating_steps'],
                           wandb_log=True)
         print(gymenv.action_space, gymenv.observation_space)
-        print(gymenv)
+        if my_config['comment']: print(my_config['comment'])
         my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
         rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
         if rep.lower() != 'y':
