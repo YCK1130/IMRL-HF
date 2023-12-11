@@ -9,8 +9,8 @@ import wandb
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Box
+from gymnasium.utils import seeding
 from collections import deque
-
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": -1,
     "distance": 4.0,
@@ -434,7 +434,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
         agent = 0
         opponent = 1 - agent
-        reward_ctrl = self.control_reward(action) / 2
+        reward_ctrl = self.control_reward(action) / 5
         ### calculate nearness
         nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(agent)
         nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(opponent)
@@ -500,12 +500,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if self.render_mode == "human":
             self.render()
             self.game_status_indicator(agent)
-        info = {
-            "reward": reward,
-            "reward_ctrl": reward_ctrl,
-            "reward_near": reward_near,
-            "penalty_oppent_near": penalty_oppent_near,
-        }
+        info = {}
         if self.wandb_log:
             self.eps_info += np.array([reward,
                                         reward_ctrl,
@@ -523,6 +518,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                                             self.GAME_STATUS == self.GAME_STATUS.FOUL
                                             ],dtype=np.float32)
                 self.eps_infos.append(self.eps_info)
+                for i, key in enumerate(self.log_info):
+                    info[key] = self.eps_info[i]
                 self.eps_info = np.array([0]*len(self.eps_info),dtype=np.float32)
             if self.step_count%1000==0 and len(self.eps_infos) == self.eps_infos.maxlen: 
                 avg_info = np.average(np.array(self.eps_infos),axis=0)
@@ -531,7 +528,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 temp_info = {}
                 for i, key in enumerate(self.log_info):
                     temp_info[key] = avg_info[i]
-                wandb.log(temp_info, step=self.step_count)
+                temp_info['step_count'] = self.step_count
+                wandb.log(temp_info)
+
         return observation, reward, done, self.eps_stepcnt > self.truncated_step, info
 
     def reset_model(self):
@@ -539,9 +538,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if EPISODE_LOG: print("reset model@ ",self.eps_stepcnt)
         qpos = self.init_qpos
         qvel = self.init_qvel
-        # if self.step_count > self.first_state_step + self.alter_state_step:
-        #     qpos += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qpos))
-        #     qvel += self.np_random.uniform(low=-0.05, high=0.05,size=len(self.init_qvel))
+        if self.step_count > self.first_state_step + self.alter_state_step:
+            qpos += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qpos))
+            qvel += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qvel))
         self.GAME_STATUS.reset()
         self.eps_reward = 0
         self.eps_stepcnt = 0
@@ -645,3 +644,6 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         elif status == self.GAME_STATUS.FOUL:
             self.model.geom_rgba[agent_indicator_id] = np.array([1, 0, 0, 1]) # red
             self.model.geom_rgba[oppent_indicator_id] = np.array([1, 0, 0, 1]) # red
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]

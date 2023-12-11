@@ -3,3 +3,4 @@ wandb
 tensorboard
 gymnasium[mujoco]
 mujoco<3
+tqdm

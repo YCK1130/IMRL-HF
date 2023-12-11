@@ -12,29 +12,32 @@ from wandb.integration.sb3 import WandbCallback
 import torch
 from torch import nn
 import spaces
-
+import tqdm
 # Create directories to hold models and logs
 model_dir = "models"
 log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 5
+run_num = 13
 date = '1211'
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
-    "save_path": "models/",
+    "save_path": f"models/{date}_{run_num}",
     "saving_timesteps": 1e5,
     "device": "cuda",
-    "first_stage_steps": 5e5,
+    "eval_episode_num": 100,
+    "first_stage_steps": 4e5,
     "second_stage_alternating_steps": 1e5,
+    "max_steps": 2e6,
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''recording game status''',
+    "comment": '''small goal reward, with +-0.1 random reset, small control penalty''',
 }
-
+os.makedirs(my_config['save_path'], exist_ok=True)
+model_dir = my_config['save_path']
 class CustomCNN(BaseFeaturesExtractor):
     """
     :param observation_space: (gym.Space)
@@ -97,21 +100,71 @@ def train(env, sb3_algo):
                         device=device, tensorboard_log=log_dir)
         case 'PPO':
             model = PPO(policy_network, env, verbose=1,
-                        device=device, tensorboard_log=log_dir,
-                        )
+                        device=device, tensorboard_log=log_dir)
         case _:
             print('Algorithm not found')
             return
 
     iters = 0
+    current_best_reward = -1e5
+    current_best_win = 0
     while True:
         iters += 1
         model.learn(total_timesteps=my_config['saving_timesteps'], reset_num_timesteps=False, callback=WandbCallback(
                             gradient_save_freq=100,
                             verbose=2,
                         ))
-        model.save(f"{model_dir}/{date}_{run_num}_{sb3_algo}_{int(my_config['saving_timesteps']*iters)}")
-        if my_config['saving_timesteps']*iters > 2e6:
+        save_path = f"{model_dir}/{sb3_algo}_{int(my_config['saving_timesteps']*iters)}"
+        if iters < 2:
+            model.save(save_path)
+            continue
+
+        # Evaluation after 3 iterations
+        avg_reward = 0
+        avg_win = 0
+        avg_steps = 0
+        print("---------------")
+        print("Evaluating...")
+        for seed in tqdm.tqdm(range(my_config["eval_episode_num"])):
+            done = False
+
+            # Set seed using old Gym API
+            env.seed(seed)
+            obs = env.reset()[0]
+
+            # Interact with env using old Gym API
+            steps = 0
+            while not done:
+                action, _state = model.predict(obs, deterministic=True)
+                obs, _, done,_, info = env.step(action)
+                steps += 1
+                if steps > 2500:
+                    break
+
+            if done:
+                avg_reward += info['reward']/my_config["eval_episode_num"]
+                avg_win += info['win']/my_config["eval_episode_num"]
+            avg_steps = steps/my_config["eval_episode_num"]
+        print("avg_reward:  ", avg_reward)
+        print(f"win Prob.: {avg_win*100}%")
+        print(f"win Prob.: {avg_steps}")
+        print()
+        # Save best model
+        if my_config['saving_timesteps']*iters < my_config['first_stage_steps'] + my_config['second_stage_alternating_steps'] \
+            and current_best_reward < avg_reward:
+            print("Saving Model -- avg_reward")
+            current_best_reward = avg_reward
+            model.save(save_path)
+        if my_config['saving_timesteps']*iters >= my_config['first_stage_steps'] + my_config['second_stage_alternating_steps']:
+            if current_best_win < 0 :
+                current_best_win = 0
+            if current_best_win <= avg_win:
+                print("Saving Model -- avg_win")
+                current_best_win = avg_win
+                model.save(save_path)
+        print("---------------")
+
+        if my_config['saving_timesteps']*iters > my_config['max_steps']:
             break
 
 
@@ -138,17 +191,12 @@ def test(env, sb3_algo, path_to_model):
 
     obs = env.reset()[0]
     done = False
-    extra_steps = 60
     while True:
         action, _ = model.predict(obs)
         obs, _, done, _, _ = env.step(action)
 
-        if done or extra_steps < 60:
-            extra_steps -= 1
-            if extra_steps < 0:
-                obs = env.reset()[0]
-                extra_steps = 60
-                # break
+        if done :
+            obs = env.reset()[0]
 
 
 if __name__ == '__main__':
@@ -167,9 +215,10 @@ if __name__ == '__main__':
                           render_mode=None,
                           first_state_step=my_config['first_stage_steps'],
                           alter_state_step=my_config['second_stage_alternating_steps'],
-                          wandb_log=True)
+                          wandb_log=True,
+                          save_model_dir=my_config['save_path'],)
         print(gymenv.action_space, gymenv.observation_space)
-        if my_config['comment']: print(my_config['comment'])
+        if my_config['comment']: print("comment: \n\t", my_config['comment'])
         my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
         rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
         if rep.lower() != 'y':
@@ -186,7 +235,8 @@ if __name__ == '__main__':
             gymenv = gym.make("Fencer", render_mode='human',
                               first_state_step=my_config['testing_first_stage_steps'],
                               alter_state_step=my_config['testing_second_stage_alternating_steps'],
-                              wandb_log=False)
+                              wandb_log=False,
+                              save_model_dir=my_config['save_path'],)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
             # wandb.finish()
         else:
