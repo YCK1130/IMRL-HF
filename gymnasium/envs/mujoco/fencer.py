@@ -538,9 +538,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if EPISODE_LOG: print("reset model@ ",self.eps_stepcnt)
         qpos = self.init_qpos
         qvel = self.init_qvel
-        if self.step_count > self.first_state_step + self.alter_state_step:
-            qpos += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qpos))
-            qvel += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qvel))
+        # if self.step_count > self.first_state_step + self.alter_state_step:
+        #     qpos += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qpos))
+        #     qvel += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qvel))
         self.GAME_STATUS.reset()
         self.eps_reward = 0
         self.eps_stepcnt = 0

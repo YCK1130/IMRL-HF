@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 13
+run_num = 14
 date = '1211'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -34,7 +34,7 @@ my_config = {
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''small goal reward, with +-0.1 random reset, small control penalty''',
+    "comment": '''small goal reward, no random reset, small control penalty''',
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
 model_dir = my_config['save_path']
@@ -144,10 +144,10 @@ def train(env, sb3_algo):
             if done:
                 avg_reward += info['reward']/my_config["eval_episode_num"]
                 avg_win += info['win']/my_config["eval_episode_num"]
-            avg_steps = steps/my_config["eval_episode_num"]
-        print("avg_reward:  ", avg_reward)
-        print(f"win Prob.: {avg_win*100}%")
-        print(f"win Prob.: {avg_steps}")
+            avg_steps += steps/my_config["eval_episode_num"]
+        print("Avg reward:", avg_reward)
+        print(f"Avg steps: {avg_steps}")
+        print(f"Win Prob.: {avg_win*100}%")
         print()
         # Save best model
         if my_config['saving_timesteps']*iters < my_config['first_stage_steps'] + my_config['second_stage_alternating_steps'] \
