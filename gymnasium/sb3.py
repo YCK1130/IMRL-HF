@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 3
+run_num = 5
 date = '1211'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -32,15 +32,7 @@ my_config = {
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''
-    no foul, no random reset
-    {
-        "win": 5,
-        "lose": -5,
-        "draw": 0,
-        "foul": -5,
-    }
-    ''',
+    "comment": '''recording game status''',
 }
 
 class CustomCNN(BaseFeaturesExtractor):
