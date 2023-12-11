@@ -14,7 +14,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 my_config = {
-    "run_id": "please",
+    "run_id": "Test_0",
 
     "algorithm": PPO,
     "policy_network": "MlpPolicy",

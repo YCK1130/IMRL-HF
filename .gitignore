@@ -43,5 +43,5 @@ tutorial/*.html
 vizdoom.ini
 
 models
-
+tf_log
 
