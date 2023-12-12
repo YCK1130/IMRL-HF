@@ -13,23 +13,27 @@ from .component import *
 
 # 'hat' is the high-MDP
 # 'bar' is the low-MDP
-# class ASquaredCPPOAgent(BaseAgent):
 
 
 class ASquaredCPPOAgent:
     def __init__(self, config):
-        # BaseAgent.__init__(self, config)
         self.config = config
-        self.task = config["task_fn"]()
-        self.network = config["network_fn"]()
+
+        self.env = config["env"]
+        self.eval_env = config["eval_env"]
+
+        self.network = config["network"]
         self.opt = config["optimizer_fn"](self.network.parameters())
         self.total_steps = 0
 
-        self.worker_index = tensor(np.arange(config["num_workers"])).long()
-        self.states, _ = self.task.reset()
-        self.states = config["state_normalizer"](self.states)
-        self.is_initial_states = tensor(np.ones((config["num_workers"]))).byte()
-        self.prev_options = tensor(np.zeros(config["num_workers"])).long()
+        self.num_envs = self.env.num_envs
+        self.worker_index = tensor(np.arange(self.num_envs)).long()
+
+        states, _ = self.env.reset()
+        self.states = config["state_normalizer"](states)
+
+        self.is_initial_states = tensor(np.ones((self.num_envs))).byte()
+        self.prev_options = tensor(np.zeros(self.num_envs)).long()
 
         self.count = 0
 
@@ -206,7 +210,8 @@ class ASquaredCPPOAgent:
 
     def record_online_return(self, info, offset=0):
         if isinstance(info, dict):
-            ret = info['episodic_return']
+            pass
+            # ret = info['episodic_return']
             # if ret is not None:
             #     self.logger.add_scalar(
             #         'episodic_return_train', ret, self.total_steps + offset)
@@ -246,7 +251,7 @@ class ASquaredCPPOAgent:
             v_bar = prediction['q_o'].gather(1, options.unsqueeze(-1))
             v_hat = (prediction['q_o'] * pi_hat).sum(-1).unsqueeze(-1)
 
-            next_states, rewards, terminals, info = self.task.step(
+            next_states, rewards, terminals, truncated, info = self.env.step(
                 to_np(actions))
             self.record_online_return(info)
             rewards = config["reward_normalizer"](rewards)

@@ -13,7 +13,7 @@ def a_squared_c_ppo_continuous():
     config["freeze_v"] = False
     config["tasks"] = True
     config["save_interval"] = int(1e6 / 2048) * 2048
-    
+
     # gate=nn.Tanh(),
 
     config["log_level"] = 0
@@ -27,26 +27,36 @@ def a_squared_c_ppo_continuous():
     config["max_steps"] = 2e6
     config["beta_weight"] = 0
 
-    env = gym.vector.make("Reacher", render_mode=None)
-    config["task_fn"] = lambda: env
-    config["state_dim"] = 0 if env.observation_space.shape == None else env.observation_space.shape[0]
-    config["action_dim"] = 0 if env.action_space.shape == None else env.action_space.shape[0]
-    config["eval_env"] = config["task_fn"]()
+    # config["env"] = gym.vector.make("Reacher", render_mode=None)
+    config["env"] = gym.vector.make("Reacher", render_mode="human")
+    config["eval_env"] = gym.make("Reacher", render_mode=None)
+
+    observation_space = config["env"].observation_space.shape
+    action_space = config["env"].action_space.shape
+
+    config["state_dim"] = 0 if observation_space is None else observation_space[-1]
+    config["action_dim"] = 0 if action_space is None else action_space[-1]
 
     hidden_units = (64, 64)
 
-    config["network_fn"] = lambda: OptionGaussianActorCriticNet(
+    config["network"] = OptionGaussianActorCriticNet(
         config["state_dim"], config["action_dim"],
         num_options=config["num_o"],
-        actor_body=FCBody(config["state_dim"],
-                          hidden_units=hidden_units, gate=config["gate"]),
+        actor_body=FCBody(
+            config["state_dim"],
+            hidden_units=hidden_units, gate=config["gate"]),
         critic_body=FCBody(
-            config["state_dim"], hidden_units=hidden_units, gate=config["gate"]),
+            config["state_dim"],
+            hidden_units=hidden_units,
+            gate=config["gate"]),
         option_body_fn=lambda: FCBody(
-            config["state_dim"], hidden_units=hidden_units, gate=config["gate"]),
+            config["state_dim"],
+            hidden_units=hidden_units,
+            gate=config["gate"]),
     )
     config["optimizer_fn"] = lambda params: torch.optim.Adam(
         params, 3e-4, eps=1e-5)
+
     config["discount"] = 0.99
     config["use_gae"] = True
     config["gae_tau"] = 0.95
@@ -62,7 +72,7 @@ def a_squared_c_ppo_continuous():
 
 if __name__ == '__main__':
     random_seed()
-    set_one_thread()
-    select_device(-1)
+    # set_one_thread()
+    # select_device(-1)
 
     a_squared_c_ppo_continuous()

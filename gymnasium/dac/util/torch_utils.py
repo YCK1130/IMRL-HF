@@ -13,21 +13,21 @@ import os
 def select_device(gpu_id):
     # if torch.cuda.is_available() and gpu_id >= 0:
     if gpu_id >= 0:
-        config["DEVICE"] = torch.device('cuda:%d' % (gpu_id))
+        DEVICE = torch.device('cuda:%d' % (gpu_id))
     else:
-        config["DEVICE"] = torch.device('cpu')
+        DEVICE = torch.device('cpu')
 
 
-def tensor(x):
+def tensor(x) -> Tensor:
     if isinstance(x, torch.Tensor):
         return x
     x = np.asarray(x, dtype=np.float32)
-    x = torch.tensor(x, device=config["DEVICE"], dtype=torch.float32)
+    x = torch.tensor(x, device=DEVICE, dtype=torch.float32)
     return x
 
 
 def range_tensor(end):
-    return torch.arange(end).long().to(config["DEVICE"])
+    return torch.arange(end).long().to(DEVICE)
 
 
 def to_np(t: Tensor) -> np.ndarray:
@@ -132,7 +132,7 @@ class Grad:
         else:
             self.grads = []
             for param in network.parameters():
-                self.grads.append(torch.zeros(param.data.size(), device=config["DEVICE"]))
+                self.grads.append(torch.zeros(param.data.size(), device=DEVICE))
 
     def add(self, op):
         if isinstance(op, Grad):

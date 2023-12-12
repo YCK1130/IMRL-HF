@@ -59,23 +59,23 @@ config["eval_episodes"] = 10
 config["async_actor"] = True
 config["tasks"] = False
 
-    # @property
-    # def eval_env(self):
-    #     return self.__eval_env
-    #
-    # @eval_env.setter
-    # def eval_env(self, env):
-    #     self.__eval_env = env
-    #     self.state_dim = env.state_dim
-    #     self.action_dim = env.action_dim
-    #     self.task_name = env.name
-    #
-    # def add_argument(self, *args, **kwargs):
-    #     self.parser.add_argument(*args, **kwargs)
-    #
-    # def merge(self, config_dict=None):
-    #     if config_dict is None:
-    #         args = self.parser.parse_args()
-    #         config_dict = args.__dict__
-    #     for key in config_dict.keys():
-    #         setattr(self, key, config_dict[key])
+# @property
+# def eval_env(self):
+#     return self.__eval_env
+#
+# @eval_env.setter
+# def eval_env(self, env):
+#     self.__eval_env = env
+#     self.state_dim = env.state_dim
+#     self.action_dim = env.action_dim
+#     self.task_name = env.name
+#
+# def add_argument(self, *args, **kwargs):
+#     self.parser.add_argument(*args, **kwargs)
+#
+# def merge(self, config_dict=None):
+#     if config_dict is None:
+#         args = self.parser.parse_args()
+#         config_dict = args.__dict__
+#     for key in config_dict.keys():
+#         setattr(self, key, config_dict[key])

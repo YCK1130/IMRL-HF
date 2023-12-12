@@ -62,7 +62,7 @@ class OptionGaussianActorCriticNet(nn.Module, BaseNet):
 
         self.num_options = num_options
         self.action_dim = action_dim
-        self.to(config["DEVICE"])
+        self.to(DEVICE)
 
     def forward(self, obs):
         obs = tensor(obs)
