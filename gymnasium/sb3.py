@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 14
+run_num = 15
 date = '1211'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -236,6 +236,7 @@ if __name__ == '__main__':
                               first_state_step=my_config['testing_first_stage_steps'],
                               alter_state_step=my_config['testing_second_stage_alternating_steps'],
                               wandb_log=False,
+                              enable_random=True,
                               save_model_dir=my_config['save_path'],)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
             # wandb.finish()

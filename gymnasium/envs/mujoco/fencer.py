@@ -227,6 +227,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         first_state_step: int = 5e5,
         alter_state_step: int = 5e4,
         wandb_log: bool = False,
+        enable_random: bool = False,
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -328,6 +329,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         ############################################
         ### episode related properties
         ############################################
+        self.enable_random = enable_random
         self.eps_stepcnt = 0
         self.eps_reward = 0
         # self.agent0_attacked = False
@@ -538,9 +540,9 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if EPISODE_LOG: print("reset model@ ",self.eps_stepcnt)
         qpos = self.init_qpos
         qvel = self.init_qvel
-        # if self.step_count > self.first_state_step + self.alter_state_step:
-        #     qpos += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qpos))
-        #     qvel += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qvel))
+        if self.enable_random and self.step_count > self.first_state_step + self.alter_state_step:
+            qpos += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qpos))
+            qvel += self.np_random.uniform(low=-0.1, high=0.1,size=len(self.init_qvel))
         self.GAME_STATUS.reset()
         self.eps_reward = 0
         self.eps_stepcnt = 0
