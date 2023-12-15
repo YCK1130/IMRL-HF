@@ -23,7 +23,7 @@
 				<geom name="0_target0" pos="0 0.1 -0.3" rgba="1 0 0 1" size="0.02" type="sphere" />
 				<geom name="0_target1" pos="0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
 				<geom name="0_target2" pos="-0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
-				<geom name="0_hat" pos="0 0 0.265" rgba="0 1 0 1" size="0.05" type="sphere" />
+				<geom name="0_hat" pos="0 0 0.265" rgba="0 0 1 1" size="0.05" type="sphere" />
 				<geom fromto="0 0 -0.4 0 0 0.2" name="0_shoulder_pan" size="0.1" type="capsule" />
 				<joint axis="0 0 1" damping="1.0" name="0_r_shoulder_pan_joint" pos="0 0 0" range="-2.2854 1.714602" type="hinge" />
 				<body axisangle="1 0 0 -1.0" name="0_r_shoulder_lift_link" pos="0 0 0">
