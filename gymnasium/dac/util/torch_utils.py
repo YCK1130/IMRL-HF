@@ -4,16 +4,20 @@
 # declaration at the top                                              #
 #######################################################################
 
-from .config import *
-from torch import Tensor
-import torch
 import os
+import torch
+from torch import Tensor
+import numpy as np
+
+from .config import DEVICE
 
 
 def select_device(gpu_id):
-    # if torch.cuda.is_available() and gpu_id >= 0:
-    if gpu_id >= 0:
+    global DEVICE
+    if torch.cuda.is_available() and gpu_id >= 0:
         DEVICE = torch.device('cuda:%d' % (gpu_id))
+    elif torch.backends.mps.is_available() and gpu_id >= 0:
+        DEVICE = torch.device('mps')
     else:
         DEVICE = torch.device('cpu')
 
@@ -132,7 +136,8 @@ class Grad:
         else:
             self.grads = []
             for param in network.parameters():
-                self.grads.append(torch.zeros(param.data.size(), device=DEVICE))
+                self.grads.append(torch.zeros(
+                    param.data.size(), device=DEVICE))
 
     def add(self, op):
         if isinstance(op, Grad):

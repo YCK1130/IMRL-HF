@@ -23,6 +23,9 @@ class BaseNormalizer:
     def load_state_dict(self, _):
         return
 
+    def __call__(self, x):
+        return x
+
 
 class MeanStdNormalizer(BaseNormalizer):
     def __init__(self, read_only=False, clip=10.0, epsilon=1e-8):
@@ -49,6 +52,7 @@ class MeanStdNormalizer(BaseNormalizer):
         self.rms.mean = saved['mean']
         self.rms.var = saved['var']
 
+
 class RescaleNormalizer(BaseNormalizer):
     def __init__(self, coef=1.0):
         BaseNormalizer.__init__(self)
@@ -67,3 +71,4 @@ class ImageNormalizer(RescaleNormalizer):
 class SignNormalizer(BaseNormalizer):
     def __call__(self, x):
         return np.sign(x)
+

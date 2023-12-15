@@ -4,6 +4,9 @@
 # declaration at the top                                              #
 #######################################################################
 
+from typing import Optional
+
+
 class ConstantSchedule:
     def __init__(self, val):
         self.val = val
@@ -13,19 +16,22 @@ class ConstantSchedule:
 
 
 class LinearSchedule:
-    def __init__(self, start, end=None, steps=None):
+    def __init__(self, start, end: Optional[int], steps: int):
         if end is None:
             end = start
             steps = 1
-        self.inc = (end - start) / float(steps)
+
         self.current = start
-        self.end = end
+        self.end = start if end is None else end
+
+        self.inc = (end - start) / float(steps)
+
         if end > start:
             self.bound = min
         else:
             self.bound = max
 
-    def __call__(self, steps=1):
+    def __call__(self, steps: int = 1):
         val = self.current
         self.current = self.bound(self.current + self.inc * steps, self.end)
         return val

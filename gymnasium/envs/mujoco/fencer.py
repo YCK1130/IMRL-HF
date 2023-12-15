@@ -7,7 +7,7 @@ import os
 from stable_baselines3 import SAC, TD3, A2C, PPO
 import wandb
 from gymnasium import utils
-from gymnasium.envs.mujoco import MujocoEnv
+from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
 from gymnasium.spaces import Box
 from gymnasium.utils import seeding
 from collections import deque

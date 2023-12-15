@@ -5,32 +5,10 @@
 #######################################################################
 
 import numpy as np
-import pickle
-import os
 import datetime
-import torch
-import time
-from .torch_utils import *
 from pathlib import Path
 
-
-def run_steps(agent):
-    config = agent.config
-    agent_name = agent.__class__.__name__
-    t0 = time.time()
-    while True:
-        # if config["save_interval"] and not agent.total_steps % config["save_interval"]:
-        #     agent.save('data/%s-%s-%d' % (agent_name, config["tag"], agent.total_steps))
-        # if config["log_interval"] and not agent.total_steps % config["log_interval"]:
-        #     agent.logger.info('steps %d, %.2f steps/s' % (agent.total_steps, config["log_interval"] / (time.time() - t0)))
-        #     t0 = time.time()
-        if config["eval_interval"] and not agent.total_steps % config["eval_interval"]:
-            agent.eval_episodes()
-        if config["max_steps"] and agent.total_steps >= config["max_steps"]:
-            agent.close()
-            break
-        agent.step()
-
+from .torch_utils import *
 
 def get_time_str():
     return datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -51,7 +29,8 @@ def close_obj(obj):
 
 def random_sample(indices, batch_size):
     indices = np.asarray(np.random.permutation(indices))
-    batches = indices[:len(indices) // batch_size * batch_size].reshape(-1, batch_size)
+    batches = indices[:len(indices) // batch_size *
+                      batch_size].reshape(-1, batch_size)
     for batch in batches:
         yield batch
     r = len(indices) % batch_size
