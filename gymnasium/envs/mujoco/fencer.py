@@ -18,18 +18,23 @@ DEFAULT_CAMERA_CONFIG = {
 
 EPISODE_LOG = False
 
+
 def vec_hat(vec):
     return vec / np.linalg.norm(vec)
+
+
 class GameStatus():
     IDLE = 0
     WIN = 1
     LOSE = 2
     DRAW = 3
     FOUL = 4
+
     def __init__(self, name, values):
         self.name = name
         self.values = values
         self.status = self.IDLE
+
     def agent_win(self):
         if self.status in [self.LOSE, self.DRAW]:
             self.status = self.DRAW
@@ -38,6 +43,7 @@ class GameStatus():
         else:
             self.status = self.WIN
         return self.status
+
     def oppent_win(self):
         if self.status in [self.WIN, self.DRAW]:
             self.status = self.DRAW
@@ -46,16 +52,21 @@ class GameStatus():
         else:
             self.status = self.LOSE
         return self.status
+
     def foul(self):
         self.status = self.FOUL
         return self.status
+
     def reset(self):
         self.status = self.IDLE
         return self.status
+
     def __eq__(self, __value: object) -> bool:
         return self.status == __value
+
     def __ne__(self, __value: object) -> bool:
         return self.status != __value
+
 
 class FencerEnv(MujocoEnv, utils.EzPickle):
     r"""
@@ -245,7 +256,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(30,), dtype=np.float32)
+                                shape=(42,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -257,15 +268,16 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         )
         self.wandb_log = wandb_log
         if self.wandb_log:
-            self.log_info = ["reward", "reward_ctrl", "reward_near", "penalty_oppent_near", "eps_stepcnt","win","lose","draw","foul"]
-            self.eps_info = np.array([0]*len(self.log_info),dtype=np.float32)
+            self.log_info = ["reward", "reward_ctrl", "reward_near",
+                             "penalty_oppent_near", "eps_stepcnt", "win", "lose", "draw", "foul"]
+            self.eps_info = np.array([0]*len(self.log_info), dtype=np.float32)
             self.eps_infos = deque(maxlen=100)
         ''' 
         change action space to be half of the original
         action space, since we are only controlling one arm
         '''
         ############################################
-        ### check action space
+        # check action space
         ############################################
         assert self.action_space.shape and len(self.action_space.shape) >= 1
         env_action_space_shape = self.action_space.shape[0]
@@ -276,13 +288,17 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         low, high = low[:env_action_space_shape //
                         2], high[:env_action_space_shape//2]
         self.action_space = Box(low=low, high=high, dtype=np.float32)
-        print(" real action space:",self.env_action_space)
-        print("agent action space:",self.action_space)
+        print(" real action space:", self.env_action_space)
+        print("agent action space:", self.action_space)
         # self.init_direction = np.array([1, 0, 0])
         ############################################
-        ### match related properties
+        # match related properties
         ############################################
         self.target_point = ["target1", "target2", "target0"]
+        self.velocity_point = ['upper_arm', 'elbow_flex',
+                               'forearm_roll', 'forearm', 'wrist_flex']
+        self.last_obs = [0, 0, 0]
+        self.this_obs = [0, 0, 0]
         # self.target_weight = [1, 1, 1]
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
@@ -294,29 +310,35 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         }
         self.GAME_STATUS = GameStatus('Rules', ['WIN', 'LOSE', 'DRAW', 'FOUL'])
         ############################################
-        ### target area related properties
-        ### agent: 0, opponent: 1
+        # target area related properties
+        # agent: 0, opponent: 1
         ############################################
         self.target_geom = ["shoulder_pan", "shoulder_lift"]
-        self.target_z_constraint_reference_point = ["target0", "target1"] # [lower, upper]
-        self.collide_dist_threshold = 2 # min should be 0.6
-        self.z_nearness_threshold = 0.5 # min should be 0.3
-        print("0 attact_geom_id: ",self.get_geom_id(f"{0}_{self.attact_point}"))
-        print("0 target_geom_id: ",self.get_geom_id(f"{1}_{self.target_geom[0]}"))
+        self.target_z_constraint_reference_point = [
+            "target0", "target1"]  # [lower, upper]
+        self.collide_dist_threshold = 2  # min should be 0.6
+        self.z_nearness_threshold = 0.5  # min should be 0.3
+        print("0 attact_geom_id: ", self.get_geom_id(
+            f"{0}_{self.attact_point}"))
+        print("0 target_geom_id: ", self.get_geom_id(
+            f"{1}_{self.target_geom[0]}"))
         # print(self.data.geom(f"{0}_{self.attact_point}"))
-        self.agent_nearness_threshold = 0.1 ## can't be too large
+        self.agent_nearness_threshold = 0.1  # can't be too large
         self.agent_nearness_reward_slope = self._reward_near_weight
         self.agent_nearness_reward_offset = 0.2
-        self.oppent_nearness_threshold = 0.1 # means when the opponent is @ 0.5, the penalty is penalty_threshold ## can't be too large
+        # means when the opponent is @ 0.5, the penalty is penalty_threshold ## can't be too large
+        self.oppent_nearness_threshold = 0.2
         self.oppent_nearness_penalty_threshold = -2
         self.oppent_nearness_exponential_coeff = -5
         ############################################
-        ### learning related properties
+        # learning related properties
         ############################################
         self.step_count = 0
         self.first_state_step = int(first_state_step)
         self.alter_state_step = int(alter_state_step)
-        self.truncated_step = int(2500) ## not used, override by the env wrapper
+
+        # not used, override by the env wrapper
+        self.truncated_step = int(2500)
         print("first_state_step: ", self.first_state_step)
         print("alter_state_step: ", self.alter_state_step)
         print("truncated_step: ", self.truncated_step)
@@ -327,7 +349,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.method = method
         self.device = device
         ############################################
-        ### episode related properties
+        # episode related properties
         ############################################
         self.enable_random = enable_random
         self.eps_stepcnt = 0
@@ -336,7 +358,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         # self.agent1_attacked = False
         self.init_extra_step_after_done = 30
         self.extra_step_after_done = self.init_extra_step_after_done
-        print("extra_step_after_done: ",self.extra_step_after_done)
+
+        print("extra_step_after_done: ", self.extra_step_after_done)
         self.metadata = {
             "render_modes": [
                 "human",
@@ -348,41 +371,51 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
     def get_geom_com(self, geom_name):
         return self.data.geom(geom_name).xpos
+
     def get_geom_id(self, geom_name):
         return self.data.geom(geom_name).id
+
     def get_target_z_constraint(self, agent=0):
         return [self.get_geom_com(f"{agent}_{name}") for name in self.target_z_constraint_reference_point]
+
     def control_reward(self, action):
         return -np.square(action).sum() * self._reward_control_weight
+
     def collide2target(self, agent=0):
-        if(self.data.contact is None): return False
+        if (self.data.contact is None):
+            return False
         collision = False
         attactor = agent
         opponent = 1 - attactor
         z_constraint = self.get_target_z_constraint(opponent)
         attact_geom_id = self.get_geom_id(f"{attactor}_{self.attact_point}")
-        target_geom_id = [self.get_geom_id(f"{opponent}_{name}") for name in self.target_geom]
+        target_geom_id = [self.get_geom_id(
+            f"{opponent}_{name}") for name in self.target_geom]
         for contact in self.data.contact:
             geom1 = contact.geom1
             geom2 = contact.geom2
-            ### check if tip collide with target
-            collision =  (geom1 == attact_geom_id and geom2 in target_geom_id)
-            collision = collision or (geom2 == attact_geom_id and geom1 in target_geom_id)
+            # check if tip collide with target
+            collision = (geom1 == attact_geom_id and geom2 in target_geom_id)
+            collision = collision or (
+                geom2 == attact_geom_id and geom1 in target_geom_id)
             # if collision:
             #     print("collide ",contact.dist)
-            ### check if in target area
+            # check if in target area
             collision = collision and contact.pos[-1] > z_constraint[0][-1] and contact.pos[-1] < z_constraint[1][-1]
             if collision:
-                if EPISODE_LOG: print(f"agent{agent} collide with target @step={self.eps_stepcnt}")
+                if EPISODE_LOG:
+                    print(
+                        f"agent{agent} collide with target @step={self.eps_stepcnt}")
                 return True
         return False
+
     def calculate_nearness(self, agent=0):
         '''
         return the nearness of the agent to the target
 
         @return:
         scalar_parameter, vec_parameter, center_vec
-        
+
         @param:
         agent: 0 or 1
         @return:
@@ -390,7 +423,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         vec_parameter: the sum of the vector from the agent to the target reference point
         center_vec: the vector from the agent to the center of the target (z truncated)
         '''
-        vec_parameter = np.array([0,0,0],dtype=np.float32)
+        vec_parameter = np.array([0, 0, 0], dtype=np.float32)
         scalar_parameter = 0.0
         opponent = 1 - agent
         n = len(self.target_point)
@@ -402,12 +435,35 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             )
             vec_parameter += rel_vec / n
             scalar_parameter += np.linalg.norm(rel_vec) / n
-        
-        ### center vec, z truncated
+
+        # center vec, z truncated
         center_vec = self.get_geom_com(
             f"{agent}_{self.center_point}") - self.get_geom_com(f"{opponent}_{self.attact_point}")
-        center_vec[-1] = np.sign(center_vec[-1]) * max(0.0, abs(center_vec[-1]) - self.z_nearness_threshold)
+        center_vec[-1] = np.sign(center_vec[-1]) * max(0.0,
+                                                       abs(center_vec[-1]) - self.z_nearness_threshold)
         return scalar_parameter, vec_parameter, center_vec
+
+    def calculate_velocity(self, agent=0):
+        vec_parameter = np.array([0, 0, 0], dtype=np.float32)
+        scalar_parameter = 0.0
+        opponent = 1 - agent
+        n = len(self.target_point)
+        for point in self.target_point:
+            rel_vec = self._get_rel_pos(
+                self.get_geom_com(f"{agent}_{self.attact_point}"),
+                self.get_geom_com(f"{opponent}_{point}"),
+                agent
+            )
+            vec_parameter += rel_vec / n
+            scalar_parameter += np.linalg.norm(rel_vec) / n
+
+        # center vec, z truncated
+        center_vec = self.get_geom_com(
+            f"{agent}_{self.center_point}") - self.get_geom_com(f"{opponent}_{self.attact_point}")
+        center_vec[-1] = np.sign(center_vec[-1]) * max(0.0,
+                                                       abs(center_vec[-1]) - self.z_nearness_threshold)
+        return scalar_parameter, vec_parameter, center_vec
+
     def agent_nearness_reward(self, nearness):
         '''
         return the nearness reward of the agent to the opponent
@@ -416,6 +472,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         -max(0, slope * (nearness - threshold)) + offset
         '''
         return -max(0, self.agent_nearness_reward_slope * (nearness - self.agent_nearness_threshold)) + self.agent_nearness_reward_offset
+
     def oppent_nearness_penalty(self, nearness, truncated=True):
         '''
         return the penalty of the nearness of the opponent to the agent
@@ -428,24 +485,29 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         nearness_threshold = self.oppent_nearness_threshold
         exp_coeff = self.oppent_nearness_exponential_coeff
         if truncated:
-            return threshold*min(1,np.exp(max(-5,exp_coeff * (nearness - nearness_threshold))))
-        return threshold*np.exp(max(-5,exp_coeff * (nearness - nearness_threshold)))
+            return threshold*min(1, np.exp(max(-5, exp_coeff * (nearness - nearness_threshold))))
+        return threshold*np.exp(max(-5, exp_coeff * (nearness - nearness_threshold)))
+
     def step(self, action):
         self.eps_stepcnt += 1
         self.step_count += 1
 
         agent = 0
         opponent = 1 - agent
-        reward_ctrl = self.control_reward(action) / 5
-        ### calculate nearness
-        nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(agent)
-        nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(opponent)
-        ### calculate handcraft nearness reward(&penalty)
+        reward_ctrl = self.control_reward(action) * 0.05
+        # calculate nearness
+        nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(
+            agent)
+        nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(
+            opponent)
+        # calculate handcraft nearness reward(&penalty)
         old_reward_near = self.agent_nearness_reward(nearness_scalar_0)
-        old_penalty_oppent_near = self.oppent_nearness_penalty(nearness_scalar_1) # reward dodge
+        old_penalty_oppent_near = self.oppent_nearness_penalty(
+            nearness_scalar_1)  # reward dodge
+
         ############################################
         ##### DON'T MODIFY THE CODE BELOW HERE #####
-        ############################################        
+        ############################################
         # change action space back to original, for the mujoco env
         temp_action_space = self.action_space
         self.action_space = self.env_action_space
@@ -455,23 +517,33 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         # change action space back to model env (one model)
         self.action_space = temp_action_space
         ############################################
-        ### after taking action
+        # after taking action
+        for idx, point in enumerate(self.target_point):
+            rel_vec = self._get_rel_pos(
+                self.get_geom_com(f"{opponent}_{self.attact_point}"),
+                self.get_geom_com(f"{agent}_{point}"),
+                agent
+            )
+            self.this_obs[idx] = np.linalg.norm(rel_vec)
         observation = self._get_obs()
-
-        ### calculate nearness
-        nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(agent)
-        nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(opponent)
+        # calculate nearness
+        nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(
+            agent)
+        nearness_scalar_1, nearness_vec_1, center_vec_1 = self.calculate_nearness(
+            opponent)
 
         # test = self._get_rel_pos(self.get_geom_com(f"0_{self.attact_point}"),self.get_geom_com( f"1_{self.target_geom[0]}"), 0)
         # print(np.dot(vec_hat(nearness_vec_0),vec_hat(test)) )
 
-        ### calculate handcraft nearness reward(&penalty)
+        # calculate handcraft nearness reward(&penalty)
         reward_near = self.agent_nearness_reward(nearness_scalar_0)
-        penalty_oppent_near = self.oppent_nearness_penalty(nearness_scalar_1) # reward dodge
+        penalty_oppent_near = self.oppent_nearness_penalty(
+            nearness_scalar_1)  # reward dodge
 
-        ### calculate actual reward based on the change of nearness
+        # calculate actual reward based on the change of nearness
         reward_near = ((reward_near - old_reward_near) <= 0)*reward_near
-        penalty_oppent_near = ((penalty_oppent_near - old_penalty_oppent_near) <= 0)*penalty_oppent_near
+        penalty_oppent_near = (
+            (penalty_oppent_near - old_penalty_oppent_near) <= 0)*penalty_oppent_near
 
         if np.linalg.norm(center_vec_0) < self.collide_dist_threshold:
             if self.collide2target(0):  # attack success
@@ -505,26 +577,27 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         info = {}
         if self.wandb_log:
             self.eps_info += np.array([reward,
-                                        reward_ctrl,
-                                        reward_near, 
-                                        penalty_oppent_near, 
-                                        self.eps_stepcnt,
-                                        0, 0, 0, 0
-                                        ],dtype=np.float32)
+                                       reward_ctrl,
+                                       reward_near,
+                                       penalty_oppent_near,
+                                       self.eps_stepcnt,
+                                       0, 0, 0, 0
+                                       ], dtype=np.float32)
             if done:
                 if self.step_count > self.first_state_step - 10*1000:
                     self.eps_info += np.array([0, 0, 0, 0, 0,
-                                            self.GAME_STATUS == self.GAME_STATUS.WIN,
-                                            self.GAME_STATUS == self.GAME_STATUS.LOSE,
-                                            self.GAME_STATUS == self.GAME_STATUS.DRAW,
-                                            self.GAME_STATUS == self.GAME_STATUS.FOUL
-                                            ],dtype=np.float32)
+                                               self.GAME_STATUS == self.GAME_STATUS.WIN,
+                                               self.GAME_STATUS == self.GAME_STATUS.LOSE,
+                                               self.GAME_STATUS == self.GAME_STATUS.DRAW,
+                                               self.GAME_STATUS == self.GAME_STATUS.FOUL
+                                               ], dtype=np.float32)
                 self.eps_infos.append(self.eps_info)
                 for i, key in enumerate(self.log_info):
                     info[key] = self.eps_info[i]
-                self.eps_info = np.array([0]*len(self.eps_info),dtype=np.float32)
-            if self.step_count%1000==0 and len(self.eps_infos) == self.eps_infos.maxlen: 
-                avg_info = np.average(np.array(self.eps_infos),axis=0)
+                self.eps_info = np.array(
+                    [0]*len(self.eps_info), dtype=np.float32)
+            if self.step_count % 1000 == 0 and len(self.eps_infos) == self.eps_infos.maxlen:
+                avg_info = np.average(np.array(self.eps_infos), axis=0)
                 # print("avg_info",avg_info)
                 # print(self.eps_infos)
                 temp_info = {}
@@ -537,7 +610,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
     def reset_model(self):
         # self.step_count = 0
-        if EPISODE_LOG: print("reset model@ ",self.eps_stepcnt)
+        if EPISODE_LOG:
+            print("reset model@ ", self.eps_stepcnt)
         qpos = self.init_qpos
         qvel = self.init_qvel
         if self.enable_random and self.step_count > self.first_state_step + self.alter_state_step:
@@ -574,6 +648,16 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self.get_geom_com(f"{opponent}_{point}"),
                 agent
             )])
+        for point in self.target_point:
+            obs = np.concatenate([obs, self._get_rel_pos(self.get_geom_com(
+                f"{opponent}_{self.attact_point}"), self.get_geom_com(f"{agent}_{point}"), agent=agent)])
+        tmp = []
+        for i in range(len(self.target_point)):
+            # print(obs.shape)
+            tmp.append(self.this_obs[i]-self.last_obs[i])
+        obs = np.concatenate([obs, tmp])
+        self.last_obs = self.this_obs
+        self.this_obs = [0, 0, 0]
         # print("obs.shape",obs.shape) # (32,)
         return obs.astype(np.float32)
 
@@ -628,24 +712,34 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         print(f"restore from {self.save_model_dir}/{most_recent_file}")
         self.most_recent_file = most_recent_file
         return self.method.load(f"{self.save_model_dir}/{most_recent_file}", device=self.device, verbose=0)
+
     def game_status_indicator(self, agent=0):
         status = self.GAME_STATUS.status
         oppent = 1 - agent
         agent_indicator_id = self.get_geom_id(f"{agent}_indicator")
         oppent_indicator_id = self.get_geom_id(f"{oppent}_indicator")
         if status == self.GAME_STATUS.IDLE:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
-            self.model.geom_rgba[oppent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
+            self.model.geom_rgba[agent_indicator_id] = np.array(
+                [0.2, 0.2, 0.2, 1])
+            self.model.geom_rgba[oppent_indicator_id] = np.array(
+                [0.2, 0.2, 0.2, 1])
         elif status == self.GAME_STATUS.WIN:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0, 1, 0, 1]) # green
+            self.model.geom_rgba[agent_indicator_id] = np.array(
+                [0, 1, 0, 1])  # green
         elif status == self.GAME_STATUS.LOSE:
-            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 1, 0, 1]) # yellow
+            self.model.geom_rgba[oppent_indicator_id] = np.array(
+                [1, 1, 0, 1])  # yellow
         elif status == self.GAME_STATUS.DRAW:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0, 0, 1, 1]) # blue
-            self.model.geom_rgba[oppent_indicator_id] = np.array([0, 0, 1, 1]) # blue
+            self.model.geom_rgba[agent_indicator_id] = np.array(
+                [0, 0, 1, 1])  # blue
+            self.model.geom_rgba[oppent_indicator_id] = np.array(
+                [0, 0, 1, 1])  # blue
         elif status == self.GAME_STATUS.FOUL:
-            self.model.geom_rgba[agent_indicator_id] = np.array([1, 0, 0, 1]) # red
-            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 0, 0, 1]) # red
+            self.model.geom_rgba[agent_indicator_id] = np.array(
+                [1, 0, 0, 1])  # red
+            self.model.geom_rgba[oppent_indicator_id] = np.array(
+                [1, 0, 0, 1])  # red
+
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
