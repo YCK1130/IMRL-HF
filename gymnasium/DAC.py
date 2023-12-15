@@ -96,6 +96,7 @@ def train(env, dac_config):
         agent.save(f"{model_dir}/new_DAC_{int(TIMESTEPS*iters)}")
         if(iters >= 5):
             break
+        dac_config.max_steps += TIMESTEPS
         
 
 

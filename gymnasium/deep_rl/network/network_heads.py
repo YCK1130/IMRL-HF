@@ -274,10 +274,10 @@ class SingleOptionNet(nn.Module):
         mean = F.tanh(self.fc_pi(phi_pi))
         
         std = F.softplus(self.std).expand(mean.size(0), -1)
-        print(self.std, std)
-        self.count += 1
-        if(self.count >= 10000):
-            exit()
+        # print(self.std, std)
+        # self.count += 1
+        # if(self.count >= 10000):
+        #     exit()
         phi_beta = self.beta_body(phi)
         beta = F.sigmoid(self.fc_beta(phi_beta))
 
@@ -326,13 +326,17 @@ class OptionGaussianActorCriticNet(nn.Module, BaseNet):
         
         for option in self.options:
             prediction = option(phi)
+            # print(prediction['mean'])
             mean.append(prediction['mean'].unsqueeze(-1))
             std.append(prediction['std'].unsqueeze(-1))
             beta.append(prediction['beta'].unsqueeze(-1))
         mean = torch.cat(mean, dim=-1)
+        # print(mean)
         # print(len(std), std[0].size())
         # print(std)
         std = torch.cat(std, dim=-1)
+        if(std.shape[0] == self.action_dim):
+            std = std[:1]
         # print(std.size())
         # print(beta)
         beta = torch.cat(beta, dim=-1)
@@ -354,7 +358,9 @@ class OptionGaussianActorCriticNet(nn.Module, BaseNet):
             pi_o = pi_o.unsqueeze(0)
         if(len(log_pi_o.size()) == 1):
             log_pi_o = log_pi_o.unsqueeze(0)
-        return {'mean': mean.unsqueeze(0),
+        if(len(mean.size()) == 2):
+            mean = mean.unsqueeze(0)
+        return {'mean': mean,
                 'std': std,
                 'q_o': q_o,
                 'u_o': u_o,

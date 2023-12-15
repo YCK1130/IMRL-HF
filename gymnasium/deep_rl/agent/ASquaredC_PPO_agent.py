@@ -39,9 +39,12 @@ class ASquaredCPPOAgent(BaseAgent):
     def compute_pi_hat(self, prediction, prev_option, is_intial_states):
         inter_pi = prediction['inter_pi']
         beta = prediction['beta']
-        if(len(inter_pi.size()) == 3):
-            inter_pi = inter_pi[0]
+        # if(len(inter_pi.size()) == 3):
+        #     print("1")
+        #     inter_pi = inter_pi[0]
         if(len(beta.size()) == 3):
+            # print("beta", beta)
+            # print(beta.size())
             beta = beta[:, 0, :]
         # print(inter_pi.size())
         mask = torch.zeros_like(inter_pi)
@@ -62,11 +65,17 @@ class ASquaredCPPOAgent(BaseAgent):
         return pi_hat
 
     def compute_pi_bar(self, options, action, mean, std):
-        options = options.unsqueeze(-1).expand(-1, -1, mean.size(-2))
-        if(len(mean.size()) == 4):
-            mean = mean[0]
-        mean = mean.gather(-1, options).squeeze(1)
-        std = std.gather(-1, options).squeeze(1)
+        # print(options.size())
+        # options = options.unsqueeze(-1).expand(-1, -1, mean.size(-1))
+        # print(options.size())
+        # if(len(mean.size()) == 4):
+        #     mean = mean[0]
+        # print(mean)
+        mean = mean[range(mean.shape[0]), :, options[:, 0]]
+        # print(mean)
+        # print("before", std)
+        std = std[range(std.shape[0]), :, options[:, 0]]
+        # print("after", std)
         dist = torch.distributions.Normal(mean, std)
         # print(action.size())
         # print(mean.size())
@@ -102,6 +111,7 @@ class ASquaredCPPOAgent(BaseAgent):
             all_ret[i] = ret.detach()
 
     def learn(self, storage, mdp, freeze_v=False):
+        # print("LEARNING")
         config = self.config
         states, actions, options, log_probs_old, returns, advantages, prev_options, inits, pi_hat, mean, std = \
             storage.cat(
@@ -193,9 +203,9 @@ class ASquaredCPPOAgent(BaseAgent):
         mean = prediction['mean'][0, :,  options[0]]
         std = prediction['std'][0, :,  options[0]]
         dist = torch.distributions.Normal(mean, std)
-        print(std)
-        print(options)
-        print(prediction['std'])
+        print("std", std)
+        print("options", options)
+        print("std from pred", prediction['std'])
         actions = dist.sample()
 
         self.prev_options = options
@@ -240,21 +250,27 @@ class ASquaredCPPOAgent(BaseAgent):
 
             mean = prediction['mean'][self.worker_index, :,  options]
             std = prediction['std'][self.worker_index, :,  options]
+            # print("std", std)
+            # print("options", options)
+            # print("std from pred", prediction['std'])
+            # print(prediction['mean'].size())
             dist = torch.distributions.Normal(mean, std)
             actions = dist.sample()
 
             pi_bar = self.compute_pi_bar(options.unsqueeze(-1), actions,
                                          prediction['mean'], prediction['std'])
-
+            
             v_bar = prediction['q_o'].gather(1, options.unsqueeze(-1))
             v_hat = (prediction['q_o'] * pi_hat).sum(-1).unsqueeze(-1)
-
+            # print("vbar", v_bar)
+            # print("qo", prediction['q_o'])
             next_states, rewards, terminals, info = self.task.step(to_np(actions))
             self.record_online_return(info)
             rewards = config.reward_normalizer(rewards)
             next_states = config.state_normalizer(next_states)
             storage.add(prediction)
             # print(tensor(states).unsqueeze(0))
+            # print(pi_hat)
             storage.add({'r': tensor(rewards).unsqueeze(-1),
                          'm': tensor(1 - terminals).unsqueeze(-1),
                          'a': actions,
@@ -300,7 +316,7 @@ class ASquaredCPPOAgent(BaseAgent):
 
         if config.learning == 'all':
             mdps = ['hat', 'bar']
-            # np.random.shuffle(mdps)
+            np.random.shuffle(mdps)
             self.learn(storage, mdps[0])
             self.learn(storage, mdps[1])
         elif config.learning == 'alt':
