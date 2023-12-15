@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 2
+run_num = 5
 date = '1215'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -30,7 +30,7 @@ my_config = {
     "eval_episode_num": 100,
     "first_stage_steps": 1e4,
     "second_stage_alternating_steps": 1e5,
-    "second_stage_model": "models/1215_1/PPO_1000000.zip",
+    "second_stage_model": "models/1215_4/PPO_1000000.zip",
     "max_steps": 2e6,
 
     "testing_first_stage_steps": 0,
@@ -162,7 +162,7 @@ def train(env, sb3_algo):
             if current_best_win <= avg_win:
                 print("Saving Model -- avg_win")
                 current_best_win = avg_win
-                model.save(save_path)
+        model.save(save_path)
         print("---------------")
 
         if my_config['saving_timesteps']*iters > my_config['max_steps']:

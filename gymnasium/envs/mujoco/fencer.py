@@ -270,7 +270,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(42,), dtype=np.float32)
+                                shape=(50,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -311,8 +311,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.target_point = ["target1", "target2", "target0"]
         self.velocity_point = ['upper_arm', 'elbow_flex',
                                'forearm_roll', 'forearm', 'wrist_flex']
-        self.last_obs = [0, 0, 0]
-        self.this_obs = [0, 0, 0]
+        self.last_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        self.this_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         # self.target_weight = [1, 1, 1]
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
@@ -349,8 +349,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.agent_nearness_reward_slope = self._reward_near_weight
         self.agent_nearness_reward_offset = 0.2
         # means when the opponent is @ 0.5, the penalty is penalty_threshold ## can't be too large
-        self.oppent_nearness_threshold = 0.2
-        self.oppent_nearness_penalty_threshold = -2
+        self.oppent_nearness_threshold = 0.05
+        self.oppent_nearness_penalty_threshold = -1.5
         self.oppent_nearness_exponential_coeff = -5
         ############################################
         # learning related properties
@@ -692,12 +692,21 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             obs = np.concatenate([obs, self._get_rel_pos(self.get_geom_com(
                 f"{opponent}_{self.attact_point}"), self.get_geom_com(f"{agent}_{point}"), agent=agent)])
         tmp = []
-        for i in range(len(self.target_point)):
-            # print(obs.shape)
-            tmp.append(self.this_obs[i]-self.last_obs[i])
-        obs = np.concatenate([obs, tmp])
+        for i, point in enumerate(self.target_point):
+            # tmp.append()
+            self.this_obs[i] = self._get_rel_pos(self.get_geom_com(
+                f"{opponent}_{self.attact_point}"), self.get_geom_com(f"{agent}_{point}"), agent=agent)
+            # print(self.this_obs[i])
+        # print(tmp)
+        tmp = []
+        for i in range(len(self.this_obs)):
+            # tmp.append()
+            obs = np.concatenate([obs, self.this_obs[i]-self.last_obs[i]])
+            # print(self.this_obs[i]-self.last_obs[i])
+        # print(tmp)
+
         self.last_obs = self.this_obs
-        self.this_obs = [0, 0, 0]
+        # self.this_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         # print("obs.shape",obs.shape) # (32,)
         return obs.astype(np.float32)
 
