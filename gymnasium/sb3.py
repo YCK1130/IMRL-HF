@@ -19,8 +19,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 15
-date = '1211'
+run_num = 2
+date = '1215'
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -28,13 +28,14 @@ my_config = {
     "saving_timesteps": 1e5,
     "device": "cuda",
     "eval_episode_num": 100,
-    "first_stage_steps": 4e5,
+    "first_stage_steps": 1e4,
     "second_stage_alternating_steps": 1e5,
+    "second_stage_model": "models/1215_1/PPO_1000000.zip",
     "max_steps": 2e6,
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''small goal reward, no random reset, small control penalty''',
+    "comment": '''1 goal reward, no random reset, small control penalty, train with trained model''',
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
 model_dir = my_config['save_path']
@@ -191,11 +192,15 @@ def test(env, sb3_algo, path_to_model):
 
     obs = env.reset()[0]
     done = False
+    eps_steps = 0
     while True:
+        eps_steps += 1
         action, _ = model.predict(obs)
         obs, _, done, _, _ = env.step(action)
 
-        if done :
+        if done or eps_steps > 500: # 500 steps is about 2500 frames
+            if not done:print(f'eps_steps: {eps_steps}')
+            eps_steps = 0
             obs = env.reset()[0]
 
 
@@ -208,15 +213,26 @@ if __name__ == '__main__':
         'sb3_algo', help='StableBaseline3 RL algorithm i.e. SAC, TD3')
     parser.add_argument('-t', '--train', action='store_true')
     parser.add_argument('-s', '--test', metavar='path_to_model')
+    parser.add_argument('-s2', '--second_model', metavar='second_state_model')
     args = parser.parse_args()
     
     if args.train:
-        gymenv = gym.make("Fencer",
-                          render_mode=None,
-                          first_state_step=my_config['first_stage_steps'],
-                          alter_state_step=my_config['second_stage_alternating_steps'],
-                          wandb_log=True,
-                          save_model_dir=my_config['save_path'],)
+        if args.second_model:
+            print(f'Specifing second model: {args.second_model}')
+            gymenv = gym.make("Fencer",
+                            render_mode=None,
+                            first_state_step=my_config['first_stage_steps'],
+                            wandb_log=True,
+                            save_model_dir=my_config['save_path'],
+                            second_state_method='manual',
+                            second_state_model=args.second_model)
+        else:
+            gymenv = gym.make("Fencer",
+                            render_mode=None,
+                            first_state_step=my_config['first_stage_steps'],
+                            alter_state_step=my_config['second_stage_alternating_steps'],
+                            wandb_log=True,
+                            save_model_dir=my_config['save_path'],)
         print(gymenv.action_space, gymenv.observation_space)
         if my_config['comment']: print("comment: \n\t", my_config['comment'])
         my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
@@ -232,12 +248,22 @@ if __name__ == '__main__':
 
     if (args.test):
         if os.path.isfile(args.test):
-            gymenv = gym.make("Fencer", render_mode='human',
-                              first_state_step=my_config['testing_first_stage_steps'],
-                              alter_state_step=my_config['testing_second_stage_alternating_steps'],
-                              wandb_log=False,
-                              enable_random=True,
-                              save_model_dir=my_config['save_path'],)
+            if args.second_model:
+                print(f'Specifing second model: {args.second_model}')
+                gymenv = gym.make("Fencer", render_mode='human',
+                                  first_state_step=my_config['testing_first_stage_steps'],
+                                  wandb_log=False,
+                                  enable_random=True,
+                                  save_model_dir=my_config['save_path'],
+                                  second_state_method='manual',
+                                  second_state_model=args.second_model)
+            else:
+                gymenv = gym.make("Fencer", render_mode='human',
+                                first_state_step=my_config['testing_first_stage_steps'],
+                                alter_state_step=my_config['testing_second_stage_alternating_steps'],
+                                wandb_log=False,
+                                enable_random=True,
+                                save_model_dir=my_config['save_path'],)
             test(gymenv, args.sb3_algo, path_to_model=args.test)
             # wandb.finish()
         else:

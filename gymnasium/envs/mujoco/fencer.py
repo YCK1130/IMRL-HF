@@ -1,6 +1,6 @@
 __credits__ = ["Kallinteris-Andreas"]
 
-from typing import Dict
+from typing import Any, Dict
 import math
 import numpy as np
 import os
@@ -15,7 +15,13 @@ DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": -1,
     "distance": 4.0,
 }
-
+COLORMAP = {
+    "Gray": np.array([0.2, 0.2, 0.2, 1]),
+    "Green": np.array([0, 1, 0, 1]), 
+    "Yellow": np.array([1, 1, 0, 1]), 
+    "Blue": np.array([0, 0, 1, 1]), 
+    "Red": np.array([1, 0, 0, 1]), 
+}
 EPISODE_LOG = False
 
 def vec_hat(vec):
@@ -28,6 +34,7 @@ class GameStatus():
     FOUL = 4
     def __init__(self, name, values):
         self.name = name
+        assert len(values) == 5
         self.values = values
         self.status = self.IDLE
     def agent_win(self):
@@ -56,7 +63,8 @@ class GameStatus():
         return self.status == __value
     def __ne__(self, __value: object) -> bool:
         return self.status != __value
-
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return self.status, self.values[self.status]
 class FencerEnv(MujocoEnv, utils.EzPickle):
     r"""
     ## Description
@@ -225,6 +233,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         reward_dist_weight: float = 1,
         reward_control_weight: float = 0.1,
         first_state_step: int = 5e5,
+        second_state_method: str = 'alter',
+        second_state_model: str = None,
         alter_state_step: int = 5e4,
         wandb_log: bool = False,
         enable_random: bool = False,
@@ -240,6 +250,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             reward_control_weight,
             **kwargs,
         )
+        print("-------------------------------------")
+        print("ENV: ", self.__class__.__name__)        
         self._reward_near_weight = reward_near_weight
         self._reward_dist_weight = reward_dist_weight
         self._reward_control_weight = reward_control_weight
@@ -259,7 +271,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if self.wandb_log:
             self.log_info = ["reward", "reward_ctrl", "reward_near", "penalty_oppent_near", "eps_stepcnt","win","lose","draw","foul"]
             self.eps_info = np.array([0]*len(self.log_info),dtype=np.float32)
-            self.eps_infos = deque(maxlen=100)
+            self.eps_infos = deque(maxlen=1000)
         ''' 
         change action space to be half of the original
         action space, since we are only controlling one arm
@@ -287,12 +299,19 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
         self.match_reward = {
-            "win": 2,
-            "lose": -2,
+            "win": 1,
+            "lose": -1,
             "draw": 0,
             "foul": -5,
         }
-        self.GAME_STATUS = GameStatus('Rules', ['WIN', 'LOSE', 'DRAW', 'FOUL'])
+        self.GAME_STATUS = GameStatus('Rules', ['IDLE', 'WIN', 'LOSE', 'DRAW', 'FOUL'])
+        self.match_color = {
+            "IDLE": [COLORMAP["Gray"], COLORMAP["Gray"]],
+            "WIN": [COLORMAP["Blue"], COLORMAP["Gray"]],
+            "LOSE": [COLORMAP["Gray"], COLORMAP["Yellow"]],
+            "DRAW": [COLORMAP["Green"], COLORMAP["Green"]],
+            "FOUL": [COLORMAP["Red"], COLORMAP["Red"]],
+        }
         ############################################
         ### target area related properties
         ### agent: 0, opponent: 1
@@ -315,17 +334,30 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         ############################################
         self.step_count = 0
         self.first_state_step = int(first_state_step)
-        self.alter_state_step = int(alter_state_step)
-        self.truncated_step = int(2500) ## not used, override by the env wrapper
-        print("first_state_step: ", self.first_state_step)
-        print("alter_state_step: ", self.alter_state_step)
-        print("truncated_step: ", self.truncated_step)
         self.last_model_update_step = 0
         self.save_model_dir = save_model_dir
         self.most_recent_file = None
         self.oppent_model = None
         self.method = method
         self.device = device
+        if second_state_method not in ['alter', 'manual']:
+            raise ValueError("second_state_method must be 'alter' or 'manual'")
+        if second_state_method == 'manual' and second_state_model is None:
+            raise ValueError("You must specify the second_state_model when second_state_method is 'manual'")
+        self.second_state_method = second_state_method
+        self.alter_state_step = int(alter_state_step)
+        if self.second_state_method == 'manual':
+            try:
+                self.second_state_model_path = second_state_model
+                self.second_state_model = self.method.load(second_state_model)
+                self.second_state_model.set_env(self)
+            except Exception as e:
+                print(e)
+                raise ValueError(f"{second_state_model} not found, please check the path")
+        self.truncated_step = int(2500) ## not used, override by the env wrapper
+        print("first_state_step: ", self.first_state_step)
+        if second_state_method == 'alter': print("alter_state_step: ", self.alter_state_step)
+        print("truncated_step: ", self.truncated_step, "**NOT USED**")
         ############################################
         ### episode related properties
         ############################################
@@ -345,6 +377,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             ],
             "render_fps": int(np.round(1.0 / self.dt)),
         }
+        print("-------------------------------------")
 
     def get_geom_com(self, geom_name):
         return self.data.geom(geom_name).xpos
@@ -594,7 +627,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             return np.zeros(self.env_action_space_shape//2)
         elif self.oppent_model is None or self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
-            self.oppent_model = self.find_last_model()
+            if self.second_state_method == 'alter':
+                self.oppent_model = self.find_last_model()
+            elif self.second_state_method == 'manual':
+                self.oppent_model = self.second_state_model
             if self.oppent_model is None:
                 return np.zeros(self.env_action_space_shape//2)
             opp_action, _ = self.oppent_model.predict(
@@ -629,23 +665,12 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.most_recent_file = most_recent_file
         return self.method.load(f"{self.save_model_dir}/{most_recent_file}", device=self.device, verbose=0)
     def game_status_indicator(self, agent=0):
-        status = self.GAME_STATUS.status
+        status, statusName = self.GAME_STATUS()
         oppent = 1 - agent
         agent_indicator_id = self.get_geom_id(f"{agent}_indicator")
         oppent_indicator_id = self.get_geom_id(f"{oppent}_indicator")
-        if status == self.GAME_STATUS.IDLE:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
-            self.model.geom_rgba[oppent_indicator_id] = np.array([0.2, 0.2, 0.2, 1])
-        elif status == self.GAME_STATUS.WIN:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0, 1, 0, 1]) # green
-        elif status == self.GAME_STATUS.LOSE:
-            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 1, 0, 1]) # yellow
-        elif status == self.GAME_STATUS.DRAW:
-            self.model.geom_rgba[agent_indicator_id] = np.array([0, 0, 1, 1]) # blue
-            self.model.geom_rgba[oppent_indicator_id] = np.array([0, 0, 1, 1]) # blue
-        elif status == self.GAME_STATUS.FOUL:
-            self.model.geom_rgba[agent_indicator_id] = np.array([1, 0, 0, 1]) # red
-            self.model.geom_rgba[oppent_indicator_id] = np.array([1, 0, 0, 1]) # red
+        self.model.geom_rgba[agent_indicator_id] = self.match_color[statusName][0]
+        self.model.geom_rgba[oppent_indicator_id] = self.match_color[statusName][1]
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
