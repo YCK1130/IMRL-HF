@@ -7,10 +7,12 @@
 	</default>
 	<worldbody>
 		<light diffuse=".5 .5 .5" dir="0 0 -1" pos="0 0 3" />
-		<geom conaffinity="1" contype="1" name="table" pos="0 0.5 -0.5" size="1 1 0.1" type="plane" />
+		<geom conaffinity="1" contype="1" name="table" pos="0 0.5 -0.5" size="1 2.5 0.1" type="plane" />
+		<geom conaffinity="1" contype="1" name="0_indicator" pos="-0.7 0.5 -0.49" size="0.03 2.5 0.03" type="box" />
+		<geom conaffinity="1" contype="1" name="1_indicator" pos="0.7 0.5 -0.49" size="0.03 2.5 0.03" type="box" />
 		<!-- <geom fromto="-0.1 0 -0.4 0.1 0 -0.4" name="0_x_slide" rgba="0.6 0.6 0.6 1" size="0.1" type="capsule"></geom> -->
 		<!-- <joint axis="1 0 0" name="0_x_slide_joint" pos="0 0 -0.4" range="-1.0 1.0" type="slide"></joint> -->
-		<body name="0_y_slide_link" pos="0 -0.6 0">
+		<body name="0_y_slide_link" pos="0 -0.5 0">
 			<geom fromto="0 -0.1 -0.4 0 0.1 -0.4" name="0_y_slide" rgba="0.6 0.6 0.6 1" size="0.1" type="capsule" />
 			<joint axis="0 1 0" name="0_y_slide_joint" pos="0 0 -0.4" range="-1.0 1.0" type="slide" />
 			<body name="0_r_shoulder_pan_link" pos="0 0 0">
@@ -19,8 +21,9 @@
 				<geom name="0_l_eye_pin" pos="-0.06 0.09 0.2" rgba="0.1 0.1 0.1 1" size="0.03" type="sphere" />
 				<geom name="0_r_eye_pin" pos=" 0.06 0.09 0.2" rgba="0.1 0.1 0.1 1" size="0.03" type="sphere" />
 				<geom name="0_target0" pos="0 0.1 -0.3" rgba="1 0 0 1" size="0.02" type="sphere" />
-				<geom name="0_target1" pos="0.15 0.1 0" rgba="1 0 0 1" size="0.02" type="sphere" />
-				<geom name="0_target2" pos="-0.15 0.1 0" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="0_target1" pos="0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="0_target2" pos="-0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="0_hat" pos="0 0 0.265" rgba="0 0 1 1" size="0.05" type="sphere" />
 				<geom fromto="0 0 -0.4 0 0 0.2" name="0_shoulder_pan" size="0.1" type="capsule" />
 				<joint axis="0 0 1" damping="1.0" name="0_r_shoulder_pan_joint" pos="0 0 0" range="-2.2854 1.714602" type="hinge" />
 				<body axisangle="1 0 0 -1.0" name="0_r_shoulder_lift_link" pos="0 0 0">
@@ -64,7 +67,7 @@
 		<!-- <body name="1_x_slide_link" pos="0 1.6 0" axisangle="0 0 1 -3.1415926" > -->
 		<!-- <geom fromto="-0.1 0 -0.4 0.1 0 -0.4" name="1_x_slide" rgba="0.6 0.6 0.6 1" size="0.1" type="capsule"></geom> -->
 		<!-- <joint axis="1 0 0" name="1_x_slide_joint" pos="0 0 -0.4" range="-1.0 1.0" type="slide"></joint> -->
-		<body axisangle="0 0 1 -3.1415926" name="1_y_slide_link" pos="0 1.6 0">
+		<body axisangle="0 0 1 -3.1415926" name="1_y_slide_link" pos="0 1.5 0">
 			<geom fromto="0 -0.1 -0.4 0 0.1 -0.4" name="1_y_slide" rgba="0.6 0.6 0.6 1" size="0.1" type="capsule" />
 			<joint axis="0 1 0" name="1_y_slide_joint" pos="0 0 -0.4" range="-1.0 1.0" type="slide" />
 			<body name="1_r_shoulder_pan_link" pos="0 0 0">
@@ -73,8 +76,9 @@
 				<geom name="1_l_eye_pin" pos="-0.06 0.09 0.2" rgba="0.1 0.1 0.1 1" size="0.03" type="sphere" />
 				<geom name="1_r_eye_pin" pos=" 0.06 0.09 0.2" rgba="0.1 0.1 0.1 1" size="0.03" type="sphere" />
 				<geom name="1_target0" pos="0 0.1 -0.3" rgba="1 0 0 1" size="0.02" type="sphere" />
-				<geom name="1_target1" pos="0.15 0.1 0" rgba="1 0 0 1" size="0.02" type="sphere" />
-				<geom name="1_target2" pos="-0.15 0.1 0" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="1_target1" pos="0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="1_target2" pos="-0.15 0 0.1" rgba="1 0 0 1" size="0.02" type="sphere" />
+				<geom name="1_hat" pos="0 0 0.265" rgba="1 1 0 1" size="0.05" type="sphere" />
 				<geom fromto="0 0 -0.4 0 0 0.2" name="1_shoulder_pan" size="0.1" type="capsule" />
 				<joint axis="0 0 1" damping="1.0" name="1_r_shoulder_pan_joint" pos="0 0 0" range="-2.2854 1.714602" type="hinge" />
 				<body axisangle="1 0 0 -1.0" name="1_r_shoulder_lift_link" pos="0 0 0">
@@ -140,6 +144,10 @@
 		<motor ctrllimited="true" ctrlrange="-2.0 2.0" joint="1_r_wrist_roll_joint" />
 	</actuator>
 	<contact>
+		<pair geom1="0_sword_tip" geom2="1_shoulder_pan" name="tip0_sp_attact" />
+		<pair geom1="0_sword_tip" geom2="1_shoulder_lift" name="tip0_sl_attact" />
+		<pair geom1="1_sword_tip" geom2="0_shoulder_pan" name="tip1_sp_attact" />
+		<pair geom1="1_sword_tip" geom2="0_shoulder_lift" name="tip1_sl_attact" />
 		<pair geom1="0_sword_blade" geom2="1_sword_blade" name="blade0_contact" />
 		<pair geom1="0_sword_blade" geom2="1_y_slide" name="blade0_slide_contact" />
 		<pair geom1="0_sword_blade" geom2="1_shoulder_pan" name="blade0_sp_contact" />

@@ -45,3 +45,5 @@ vizdoom.ini
 models
 tf_log
 
+
+wandb
