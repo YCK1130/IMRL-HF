@@ -19,8 +19,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 5
-date = '1215'
+run_num = 1
+date = '1217'
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -28,14 +28,14 @@ my_config = {
     "saving_timesteps": 1e5,
     "device": "cuda",
     "eval_episode_num": 100,
-    "first_stage_steps": 1e4,
+    "first_stage_steps": 4e5,
     "second_stage_alternating_steps": 1e5,
     "second_stage_model": "models/1215_4/PPO_1000000.zip",
     "max_steps": 2e6,
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''1 goal reward, no random reset, small control penalty, train with trained model''',
+    "comment": '''2D, add velocity states''',
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
 model_dir = my_config['save_path']
@@ -139,7 +139,7 @@ def train(env, sb3_algo):
                 action, _state = model.predict(obs, deterministic=True)
                 obs, _, done,_, info = env.step(action)
                 steps += 1
-                if steps > 2500:
+                if steps > 500:
                     break
 
             if done:
@@ -158,7 +158,7 @@ def train(env, sb3_algo):
             model.save(save_path)
         if my_config['saving_timesteps']*iters >= my_config['first_stage_steps'] + my_config['second_stage_alternating_steps']:
             if current_best_win < 0 :
-                current_best_win = 0
+                current_best_win = -1
             if current_best_win <= avg_win:
                 print("Saving Model -- avg_win")
                 current_best_win = avg_win

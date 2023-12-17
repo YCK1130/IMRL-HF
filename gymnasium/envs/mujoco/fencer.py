@@ -270,7 +270,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_control_weight = reward_control_weight
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(50,), dtype=np.float32)
+                                shape=(59,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -285,7 +285,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             self.log_info = ["reward", "reward_ctrl", "reward_near",
                              "penalty_oppent_near", "eps_stepcnt", "win", "lose", "draw", "foul"]
             self.eps_info = np.array([0]*len(self.log_info), dtype=np.float32)
-            self.eps_infos = deque(maxlen=1000)
+            self.eps_infos = deque(maxlen=100)
         ''' 
         change action space to be half of the original
         action space, since we are only controlling one arm
@@ -311,8 +311,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.target_point = ["target1", "target2", "target0"]
         self.velocity_point = ['upper_arm', 'elbow_flex',
                                'forearm_roll', 'forearm', 'wrist_flex']
-        self.last_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        self.this_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        self.last_obs = np.zeros(2 * 3 * len(self.target_point), dtype=np.float32)
+        self.last_obs_opponent = np.zeros(2 * 3 * len(self.target_point), dtype=np.float32)
         # self.target_weight = [1, 1, 1]
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
@@ -405,6 +405,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             ],
             "render_fps": int(np.round(1.0 / self.dt)),
         }
+        self.fps = self.metadata["render_fps"]
+        print("fps: ", self.fps)
         print("-------------------------------------")
 
     def get_geom_com(self, geom_name):
@@ -482,6 +484,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         return scalar_parameter, vec_parameter, center_vec
 
     def calculate_velocity(self, agent=0):
+        # not used
         vec_parameter = np.array([0, 0, 0], dtype=np.float32)
         scalar_parameter = 0.0
         opponent = 1 - agent
@@ -556,13 +559,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.action_space = temp_action_space
         ############################################
         # after taking action
-        for idx, point in enumerate(self.target_point):
-            rel_vec = self._get_rel_pos(
-                self.get_geom_com(f"{opponent}_{self.attact_point}"),
-                self.get_geom_com(f"{agent}_{point}"),
-                agent
-            )
-            self.this_obs[idx] = np.linalg.norm(rel_vec)
+        # print("diff obs:", self._get_obs() - self._get_obs(agent=1))
         observation = self._get_obs()
         # calculate nearness
         nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(
@@ -661,6 +658,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.eps_reward = 0
         self.eps_stepcnt = 0
         self.extra_step_after_done = self.init_extra_step_after_done
+        self.last_obs = np.zeros(2 * 3 * len(self.target_point), dtype=np.float32)
+        self.last_obs_opponent = np.zeros(2 * 3 * len(self.target_point), dtype=np.float32)
         self.set_state(qpos, qvel)
         return self._get_obs()
 
@@ -691,23 +690,16 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         for point in self.target_point:
             obs = np.concatenate([obs, self._get_rel_pos(self.get_geom_com(
                 f"{opponent}_{self.attact_point}"), self.get_geom_com(f"{agent}_{point}"), agent=agent)])
-        tmp = []
-        for i, point in enumerate(self.target_point):
-            # tmp.append()
-            self.this_obs[i] = self._get_rel_pos(self.get_geom_com(
-                f"{opponent}_{self.attact_point}"), self.get_geom_com(f"{agent}_{point}"), agent=agent)
-            # print(self.this_obs[i])
-        # print(tmp)
-        tmp = []
-        for i in range(len(self.this_obs)):
-            # tmp.append()
-            obs = np.concatenate([obs, self.this_obs[i]-self.last_obs[i]])
-            # print(self.this_obs[i]-self.last_obs[i])
-        # print(tmp)
-
-        self.last_obs = self.this_obs
-        # self.this_obs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        # print("obs.shape",obs.shape) # (32,)
+        ''' calculate the relative velocity of both agent and opponent '''
+        assert len(obs) > 2 * 3 * len(self.target_point)
+        this_obs = obs[-2 * 3 * len(self.target_point):]
+        if agent == 1:
+            obs = np.concatenate([obs, (this_obs - self.last_obs_opponent) * self.fps])
+            self.last_obs_opponent = this_obs.copy()
+        else:
+            obs = np.concatenate([obs, (this_obs - self.last_obs) * self.fps])
+            self.last_obs = this_obs.copy()
+        # print("obs.shape",obs.shape) # (59,)
         return obs.astype(np.float32)
 
     def _get_obs_agent1(self):
@@ -724,7 +716,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
 
     def _get_opponent_action(self):
         if self.step_count < self.first_state_step:
-            return np.zeros(self.env_action_space_shape//2)
+            return np.ones(self.env_action_space_shape//2)
         elif self.oppent_model is None or self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
             if self.second_state_method == 'alter':
