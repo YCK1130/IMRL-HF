@@ -85,7 +85,8 @@ def train(env, sb3_algo):
         project="Fencer",
         config=my_config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-        id=my_config["run_id"]
+        id=my_config["run_id"],
+        algo=sb3_algo
     )
     device = my_config['device']
     policy_network = my_config['policy_network']
@@ -108,7 +109,7 @@ def train(env, sb3_algo):
 
     iters = 0
     current_best_reward = -1e5
-    current_best_win = 0
+    current_best_win = -1
     while True:
         iters += 1
         model.learn(total_timesteps=my_config['saving_timesteps'], reset_num_timesteps=False, callback=WandbCallback(
