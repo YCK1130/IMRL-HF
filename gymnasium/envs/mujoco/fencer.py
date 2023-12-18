@@ -12,6 +12,11 @@ from gymnasium.spaces import Box
 from gymnasium.utils import seeding
 from collections import deque
 
+from deep_rl.agent.ASquaredC_PPO_agent import ASquaredCPPOAgent
+from deep_rl.component.envs import TaskSB3
+from deep_rl.utils import Config, MeanStdNormalizer, generate_tag, run_steps, tensor
+from deep_rl.network import FCBody, OptionGaussianActorCriticNet
+import torch
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": -1,
     "distance": 4.0,
@@ -29,9 +34,58 @@ EPISODE_LOG = False
 
 def vec_hat(vec):
     return vec / np.linalg.norm(vec)
+def dacConfigSetup(first_state_step, alter_state_step, save_model_dir, **kwargs):
+    generate_tag(kwargs)
+    kwargs.setdefault('game', 'Fencer')
+    kwargs.setdefault('log_level', 0)
+    kwargs.setdefault('num_o', 4)
+    kwargs.setdefault('learning', 'all')
+    kwargs.setdefault('gate', torch.nn.ReLU())
+    kwargs.setdefault('freeze_v', False)
+    kwargs.setdefault('opt_ep', 5)
+    kwargs.setdefault('entropy_weight', 0.01)
+    kwargs.setdefault('tasks', False)
+    kwargs.setdefault('max_steps', 1e5)
+    kwargs.setdefault('beta_weight', 0)
+    config = Config()
+    config.merge(kwargs)
 
+    # if config.tasks:
+    #     set_tasks(config)
 
-class GameStatus:
+    if 'dm-humanoid' in config.game:
+        hidden_units = (128, 128)
+    else:
+        hidden_units = (64, 64)
+    my_config = {
+        'first_stage_steps':first_state_step, 
+        'second_stage_alternating_steps':alter_state_step, 
+        'save_path': save_model_dir,
+    }
+    config.task_fn = lambda: TaskSB3(config.game, my_config=my_config, method=ASquaredCPPOAgent)
+    config.eval_env = config.task_fn()
+
+    config.network_fn = lambda: OptionGaussianActorCriticNet(
+        config.state_dim, config.action_dim,
+        num_options=config.num_o,
+        actor_body=FCBody(config.state_dim, hidden_units=hidden_units, gate=config.gate),
+        critic_body=FCBody(config.state_dim, hidden_units=hidden_units, gate=config.gate),
+        option_body_fn=lambda: FCBody(config.state_dim, hidden_units=hidden_units, gate=config.gate),
+    )
+    config.optimizer_fn = lambda params: torch.optim.Adam(params, 3e-4, eps=1e-5)
+    config.discount = 0.99
+    config.use_gae = True
+    config.gae_tau = 0.95
+    config.gradient_clip = 0.5
+    config.rollout_length = 2048
+    config.optimization_epochs = config.opt_ep
+    config.mini_batch_size = 64
+    config.ppo_ratio_clip = 0.2
+    config.log_interval = 2048
+    config.state_normalizer = MeanStdNormalizer()
+    return config
+
+class GameStatus():
     IDLE = 0
     WIN = 1
     LOSE = 2
@@ -405,6 +459,13 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self.second_state_model = self.method.load(second_state_model)
                 self.second_state_model.set_env(self)
             except Exception as e:
+                self.second_state_model_path = second_state_model
+                dac_config = dacConfigSetup(game='Fencer', first_state_step=self.first_state_step, alter_state_step=self.alter_state_step, save_model_dir=self.save_model_dir)
+                load_agent = ASquaredCPPOAgent(dac_config)
+                load_agent.load(filename=second_state_model)
+                self.second_state_model = load_agent
+                # self.second_state_model.set_env(self)
+            except Exception as e:
                 print(e)
                 raise ValueError(f"{second_state_model} not found, please check the path")
         # not used, override by the env wrapper
@@ -639,6 +700,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             self.render()
             self.game_status_indicator(agent)
         info = {}
+        # print(self.wandb_log)
+        # print(self.step_count, len(self.eps_infos), self.eps_infos.maxlen)
         if self.wandb_log:
             self.eps_info += np.array(
                 [
@@ -781,6 +844,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             return rel_vector
 
     def _get_opponent_action(self):
+        # print(self.step_count,self.first_state_step,  self.last_model_update_step, self.alter_state_step)
         if self.step_count < self.first_state_step:
             return np.ones(self.env_action_space_shape // 2)
         elif self.oppent_model is None or self.step_count > self.last_model_update_step + self.alter_state_step:
@@ -790,12 +854,20 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             elif self.second_state_method == "manual":
                 self.oppent_model = self.second_state_model
             if self.oppent_model is None:
-                return np.zeros(self.env_action_space_shape // 2)
-            opp_action, _ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+                return np.zeros(self.env_action_space_shape//2)
+            if(self.method == ASquaredCPPOAgent):
+                opp_action = self.oppent_model.record_step(self._get_obs_agent1())
+            else:
+                opp_action, _ = self.oppent_model.predict(
+                self._get_obs_agent1(), deterministic=True)
             # print(opp_action)
             return opp_action
         elif self.oppent_model is not None:
-            opp_action, _ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
+            if(self.method == ASquaredCPPOAgent):
+                opp_action = self.oppent_model.record_step(self._get_obs_agent1())
+            else:
+                opp_action, _ = self.oppent_model.predict(
+                self._get_obs_agent1(), deterministic=True)
             # print(opp_action)
             return opp_action
         else:
@@ -819,6 +891,17 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         print("most_recent_file", most_recent_file)
         print(f"restore from {self.save_model_dir}/{most_recent_file}")
         self.most_recent_file = most_recent_file
+        print(self.method)
+        if(self.method == ASquaredCPPOAgent):
+            dac_config = dacConfigSetup(game='Fencer', first_state_step=self.first_state_step, alter_state_step=self.alter_state_step, save_model_dir=self.save_model_dir)
+            load_agent = ASquaredCPPOAgent(dac_config)
+            filename = f"{self.save_model_dir}/{most_recent_file}"
+            if "model" in filename:
+                filename = filename[:-6]
+            elif "stat" in filename:
+                filename = filename[:-5]
+            load_agent.load(filename)
+            return load_agent
         return self.method.load(f"{self.save_model_dir}/{most_recent_file}", device=self.device, verbose=0)
 
     def game_status_indicator(self, agent=0):

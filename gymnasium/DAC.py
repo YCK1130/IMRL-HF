@@ -10,7 +10,7 @@ import wandb
 from stable_baselines3.common.monitor import Monitor
 from wandb.integration.sb3 import WandbCallback
 from deep_rl.agent.ASquaredC_PPO_agent import ASquaredCPPOAgent
-from deep_rl.component.envs import Task
+from deep_rl.component.envs import TaskSB3
 from deep_rl.utils import Config, MeanStdNormalizer, generate_tag, run_steps, tensor
 from deep_rl.network import FCBody, OptionGaussianActorCriticNet
 # from .deep_rl.agent import ASquaredC_A2C_agent 
@@ -20,13 +20,20 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 my_config = {
-    "run_id": "Test_DAC",
-
-    "algorithm": PPO,
+    "run_id": f"test",
     "policy_network": "MlpPolicy",
-    "save_path": "models/",
+    "save_path": f"models/{1217}_{2}",
+    "saving_timesteps": 1e5,
+    "device": "cpu",
+    "eval_episode_num": 100,
+    "first_stage_steps": 1e4,
+    "second_stage_alternating_steps": 1e5,
+    "second_stage_model": "models/1215_1/PPO_1000000.zip",
+    "max_steps": 2e6,
 
-   
+    "testing_first_stage_steps": 0,
+    "testing_second_stage_alternating_steps": 1e6,
+    "comment": '''1 goal reward, no random reset, small control penalty, train with trained model''',
 }
 
 
@@ -54,7 +61,7 @@ def dacConfigSetup(**kwargs):
     else:
         hidden_units = (64, 64)
 
-    config.task_fn = lambda: Task(config.game)
+    config.task_fn = lambda: TaskSB3(config.game, my_config=my_config, method=ASquaredCPPOAgent)
     config.eval_env = config.task_fn()
 
     config.network_fn = lambda: OptionGaussianActorCriticNet(

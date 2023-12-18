@@ -29,15 +29,33 @@ from ..utils import *
 
 
 # adapted from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/envs.py
-def make_env(env_id, seed, rank, episode_life=True):
+def make_env(env_id, my_config, method,  seed, rank=0, episode_life=True):
     def _thunk():
         random_seed(seed)
         # if env_id.startswith("dm"):
         #     import dm_control2gym
         #     _, domain, task = env_id.split('-')
         #     env = dm_control2gym.make(domain_name=domain, task_name=task)
+        # # else:
+        # if args.second_model:
+        #     print(f'Specifing second model: {args.second_model}')
+        #     gymenv = gym.make("Fencer",
+        #                     render_mode=None,
+        #                     first_state_step=my_config['first_stage_steps'],
+        #                     wandb_log=True,
+        #                     save_model_dir=my_config['save_path'],
+        #                     second_state_method='manual',
+        #                     second_state_model=args.second_model,
+        #                     method=method)
         # else:
-        env = gym.make(env_id)
+        env = gym.make("Fencer",
+                        render_mode=None,
+                        first_state_step=my_config['first_stage_steps'],
+                        alter_state_step=my_config['second_stage_alternating_steps'],
+                        wandb_log=True,
+                        save_model_dir=my_config['save_path'],
+                        method=method)
+
         # is_atari = hasattr(gym.envs, 'atari') and isinstance(
         #     env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         # if is_atari:
@@ -207,6 +225,47 @@ class Task:
             mkdir(log_dir)
         envs = [make_env(name, seed, i, episode_life) for i in range(num_envs)]
         # if single_process:
+        #     Wrapper = DummyVecEnv
+        # else:
+        #     Wrapper = SubprocVecEnv
+        self.env = DummyVecEnv(envs)
+        # self.env = Wrapper(envs)
+        self.name = name
+        self.observation_space = self.env.observation_space
+        self.state_dim = int(np.prod(self.env.observation_space.shape))
+
+        self.action_space = self.env.action_space
+        if isinstance(self.action_space, Discrete):
+            self.action_dim = self.action_space.n
+        elif isinstance(self.action_space, Box):
+            self.action_dim = self.action_space.shape[0]
+        else:
+            assert 'unknown action space'
+
+    def reset(self):
+        return self.env.reset()
+
+    def step(self, actions):
+        if isinstance(self.action_space, Box):
+            # print(actions)
+            # print(self.action_space.low)
+            actions = np.clip(actions, self.action_space.low, self.action_space.high)
+        return self.env.step(actions)
+
+
+class TaskSB3:
+    def __init__(self,
+                 name,
+                 my_config,
+                 method,
+                 num_envs=1,
+                 single_process=True,
+                 log_dir=None,
+                 episode_life=True,
+                 seed=np.random.randint(int(1e5))):
+        if log_dir is not None:
+            mkdir(log_dir)
+        envs = [make_env(name, my_config, method, seed, i, episode_life) for i in range(num_envs)] # if single_process:
         #     Wrapper = DummyVecEnv
         # else:
         #     Wrapper = SubprocVecEnv

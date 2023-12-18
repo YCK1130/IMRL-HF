@@ -203,9 +203,9 @@ class ASquaredCPPOAgent(BaseAgent):
         mean = prediction['mean'][0, :,  options[0]]
         std = prediction['std'][0, :,  options[0]]
         dist = torch.distributions.Normal(mean, std)
-        print("std", std)
-        print("options", options)
-        print("std from pred", prediction['std'])
+        # print("std", std)
+        # print("options", options)
+        # print("std from pred", prediction['std'])
         actions = dist.sample()
 
         self.prev_options = options
