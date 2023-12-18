@@ -317,8 +317,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
         self.match_reward = {
-            "win": 5,
-            "lose": -5,
+            "win": 10,
+            "lose": -10,
             "draw": 0,
             "foul": 0,
         }
@@ -532,7 +532,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         border0_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"0_indicator")
         border1_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"1_indicator")
         # if agent is at the same side of borders, then the dot product of the two vectors should be positive
-        return border0_vec[0] * border1_vec[0] >= 0
+        return border0_vec[0] * border1_vec[0] >= -0.05
     def step(self, action):
         self.eps_stepcnt += 1
         self.step_count += 1
