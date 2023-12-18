@@ -35,13 +35,13 @@ class GameStatus():
     LOSE = 2
     DRAW = 3
     FOUL = 4
-
+    
     def __init__(self, name, values):
         self.name = name
         assert len(values) == 5
         self.values = values
         self.status = self.IDLE
-
+        self.foul_list = [False,False]
     def agent_win(self):
         if self.status in [self.LOSE, self.DRAW]:
             self.status = self.DRAW
@@ -60,12 +60,15 @@ class GameStatus():
             self.status = self.LOSE
         return self.status
 
-    def foul(self):
+    def foul(self, agent=0):
+        assert agent in [0, 1]
         self.status = self.FOUL
+        self.foul_list[agent] = True
         return self.status
 
     def reset(self):
         self.status = self.IDLE
+        self.foul_list = [False,False]
         return self.status
 
     def __eq__(self, __value: object) -> bool:
@@ -320,7 +323,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             "win": 10,
             "lose": -10,
             "draw": 0,
-            "foul": 0,
+            "foul": -1,
         }
         self.GAME_STATUS = GameStatus(
             'Rules', ['IDLE', 'WIN', 'LOSE', 'DRAW', 'FOUL'])
@@ -532,7 +535,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         border0_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"0_indicator")
         border1_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"1_indicator")
         # if agent is at the same side of borders, then the dot product of the two vectors should be positive
-        return border0_vec[0] * border1_vec[0] >= -0.05
+        return border0_vec[0] * border1_vec[0] >= -0.2
     def step(self, action):
         self.eps_stepcnt += 1
         self.step_count += 1
@@ -590,8 +593,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if np.linalg.norm(center_vec_1) < self.collide_dist_threshold:
             if self.collide2target(1):  # be attacked
                 self.GAME_STATUS.oppent_win()
-        if self.outOfArena(0) or self.outOfArena(1):
-            self.GAME_STATUS.foul()
+        if self.outOfArena(0):
+            self.GAME_STATUS.foul(0)
+        if self.outOfArena(1):
+            self.GAME_STATUS.foul(1)
         reward = reward_ctrl + reward_near + penalty_oppent_near
         done = False
         # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])
@@ -609,7 +614,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 elif self.GAME_STATUS == self.GAME_STATUS.LOSE:
                     match_reward = self.match_reward["lose"]
                 elif self.GAME_STATUS == self.GAME_STATUS.FOUL:
-                    match_reward = self.match_reward["foul"]
+                    if self.GAME_STATUS.foul_list[0]:
+                        match_reward = self.match_reward["foul"]
+                    else:
+                        match_reward = -self.match_reward["foul"]
                 reward += match_reward
         if self.render_mode == "human":
             self.render()

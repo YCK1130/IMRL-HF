@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 4
+run_num = 5
 date = '1218'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -36,9 +36,13 @@ my_config = {
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
     "comment": '''
-    2D, out of border foul closer border, add velocity states, control * 0.2
+    2D, 
+    add velocity states, control * 0.2
+    **finally work at this run: out of border foul closer border,
     self play 4e5
     match reward 10
+    foul penalty -1 if agent violate the rule
+    foul penalty 1 if not agent violate the rule
     ''',
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
