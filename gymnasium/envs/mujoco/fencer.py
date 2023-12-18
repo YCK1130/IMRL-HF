@@ -322,7 +322,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.match_reward = {
             "win": 10,
             "lose": -10,
-            "draw": 0,
+            "draw": -4,
             "foul": -1,
         }
         self.GAME_STATUS = GameStatus(
