@@ -262,7 +262,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         alter_state_step: int = 5e4,
         wandb_log: bool = False,
         enable_random: bool = False,
-        version: str = "v1",
+        version: str = "v2",
         opponent_version: str = "v2",
         time_limit: int = 1900,
         **kwargs,
