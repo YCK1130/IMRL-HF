@@ -38,16 +38,18 @@ my_config = {
     "max_steps": 2e6,
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
+    "version": "v2",
+    "version description": """
+    2D,
+    out of border foul closer border,
+    foul penalty:
+      - if agent violate the rule
+      + if not agent violate the rule
+    time limit: 1900
+    """,
     "comment": """
-    2D, 
-    add velocity states, control * 0.2
-    **finally work at this run: out of border foul closer border,
     self play 4e5
     match reward 10
-    foul penalty -1 if agent violate the rule
-    foul penalty 1 if not agent violate the rule
-    
-    add time limit 1900
     """,
 }
 os.makedirs(my_config["save_path"], exist_ok=True)
@@ -270,7 +272,7 @@ if __name__ == "__main__":
                 wandb_log=True,
                 save_model_dir=my_config["save_path"],
                 version=args.agent_verion,
-                opponent_version=args.agent_verion, # opponent use same version as agent
+                opponent_version=args.agent_verion,  # opponent use same version as agent
                 time_limit=my_config["eps_time_limit"],
             )
         print(gymenv.action_space, gymenv.observation_space)
@@ -313,7 +315,7 @@ if __name__ == "__main__":
                     enable_random=True,
                     save_model_dir=my_config["save_path"],
                     version=args.agent_verion,
-                    opponent_version=args.agent_verion, # opponent use same version as agent
+                    opponent_version=args.agent_verion,  # opponent use same version as agent
                     time_limit=my_config["eps_time_limit"],
                 )
             test(gymenv, args.sb3_algo, path_to_model=args.test)
