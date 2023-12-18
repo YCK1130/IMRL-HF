@@ -21,6 +21,7 @@ COLORMAP = {
     "Yellow": np.array([1, 1, 0, 1]),
     "Blue": np.array([0, 0, 1, 1]),
     "Red": np.array([1, 0, 0, 1]),
+    "Orange": np.array([1, 87/255, 51/255, 1]),
 }
 EPISODE_LOG = False
 
@@ -35,10 +36,10 @@ class GameStatus():
     LOSE = 2
     DRAW = 3
     FOUL = 4
-    
+    TIMEOUT = 5
     def __init__(self, name, values):
         self.name = name
-        assert len(values) == 5
+        assert len(values) == 6
         self.values = values
         self.status = self.IDLE
         self.foul_list = [False,False]
@@ -65,7 +66,9 @@ class GameStatus():
         self.status = self.FOUL
         self.foul_list[agent] = True
         return self.status
-
+    def timeout(self):
+        self.status = self.TIMEOUT
+        return self.status
     def reset(self):
         self.status = self.IDLE
         self.foul_list = [False,False]
@@ -254,6 +257,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         alter_state_step: int = 5e4,
         wandb_log: bool = False,
         enable_random: bool = False,
+        version: str = "v1",
         **kwargs,
     ):
         utils.EzPickle.__init__(
@@ -271,9 +275,14 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self._reward_near_weight = reward_near_weight
         self._reward_dist_weight = reward_dist_weight
         self._reward_control_weight = reward_control_weight
+        
+        obs_state_num = 59
+        if version == "v1":
+            '''no time state'''
+            obs_state_num = 59
 
         observation_space = Box(low=-np.inf, high=np.inf,
-                                shape=(59,), dtype=np.float32)
+                                shape=(obs_state_num,), dtype=np.float32)
 
         MujocoEnv.__init__(
             self,
@@ -286,7 +295,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.wandb_log = wandb_log
         if self.wandb_log:
             self.log_info = ["reward", "reward_ctrl", "reward_near",
-                             "penalty_oppent_near", "eps_stepcnt", "win", "lose", "draw", "foul"]
+                             "penalty_oppent_near", "eps_stepcnt", "win", "lose", "draw", "foul", "timeout"]
             self.eps_info = np.array([0]*len(self.log_info), dtype=np.float32)
             self.eps_infos = deque(maxlen=100)
         ''' 
@@ -322,17 +331,19 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.match_reward = {
             "win": 10,
             "lose": -10,
-            "draw": 0,
-            "foul": -1,
+            "draw": -5,
+            "foul": -5,
+            "timeout": -5,
         }
         self.GAME_STATUS = GameStatus(
-            'Rules', ['IDLE', 'WIN', 'LOSE', 'DRAW', 'FOUL'])
+            'Rules', ['IDLE', 'WIN', 'LOSE', 'DRAW', 'FOUL', 'TIMEOUT'])
         self.match_color = {
             "IDLE": [COLORMAP["Gray"], COLORMAP["Gray"]],
             "WIN": [COLORMAP["Blue"], COLORMAP["Gray"]],
             "LOSE": [COLORMAP["Gray"], COLORMAP["Yellow"]],
             "DRAW": [COLORMAP["Green"], COLORMAP["Green"]],
             "FOUL": [COLORMAP["Red"], COLORMAP["Red"]],
+            "TIMEOUT": [COLORMAP["Orange"], COLORMAP["Orange"]],
         }
         ############################################
         # target area related properties
@@ -383,7 +394,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 raise ValueError(
                     f"{second_state_model} not found, please check the path")
         # not used, override by the env wrapper
-        self.truncated_step = int(2500)
+        self.truncated_step = int(1900)
         print("first_state_step: ", self.first_state_step)
         if second_state_method == 'alter':
             print("alter_state_step: ", self.alter_state_step)
@@ -597,6 +608,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             self.GAME_STATUS.foul(0)
         if self.outOfArena(1):
             self.GAME_STATUS.foul(1)
+        if self.eps_stepcnt > self.truncated_step:
+            self.GAME_STATUS.timeout()
         reward = reward_ctrl + reward_near + penalty_oppent_near
         done = False
         # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])
@@ -618,6 +631,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                         match_reward = self.match_reward["foul"]
                     else:
                         match_reward = -self.match_reward["foul"]
+                elif self.GAME_STATUS == self.GAME_STATUS.TIMEOUT:
+                    match_reward = self.match_reward["timeout"]
                 reward += match_reward
         if self.render_mode == "human":
             self.render()
@@ -629,7 +644,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                                        reward_near,
                                        penalty_oppent_near,
                                        self.eps_stepcnt,
-                                       0, 0, 0, 0
+                                       0, 0, 0, 0, 0
                                        ], dtype=np.float32)
             if done:
                 if self.step_count > self.first_state_step - 10*1000:
@@ -637,7 +652,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                                                self.GAME_STATUS == self.GAME_STATUS.WIN,
                                                self.GAME_STATUS == self.GAME_STATUS.LOSE,
                                                self.GAME_STATUS == self.GAME_STATUS.DRAW,
-                                               self.GAME_STATUS == self.GAME_STATUS.FOUL
+                                               self.GAME_STATUS == self.GAME_STATUS.FOUL,
+                                               self.GAME_STATUS == self.GAME_STATUS.TIMEOUT
                                                ], dtype=np.float32)
                 self.eps_infos.append(self.eps_info)
                 for i, key in enumerate(self.log_info):
@@ -654,7 +670,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 temp_info['step_count'] = self.step_count
                 wandb.log(temp_info)
 
-        return observation, reward, done, self.eps_stepcnt > self.truncated_step, info
+        return observation, reward, done, False, info
 
     def reset_model(self):
         # self.step_count = 0
@@ -686,6 +702,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         ''' joint state '''
         obs = np.concatenate([self.data.qpos.flat[actuator_state[0]:actuator_state[1]],
                               self.data.qvel.flat[actuator_state[0]:actuator_state[1]],])
+        '''add time state'''
+        # obs = np.concatenate([obs, [self.eps_stepcnt]])
         ''' tip state '''
         obs = np.concatenate([obs, self._get_rel_pos(
             self.get_geom_com(f"{agent}_{self.center_point}"),

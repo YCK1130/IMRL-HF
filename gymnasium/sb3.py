@@ -19,7 +19,7 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 5
+run_num = 8
 date = '1218'
 my_config = {
     "run_id": f"{date}_{run_num}",
@@ -241,7 +241,7 @@ if __name__ == '__main__':
                             first_state_step=my_config['first_stage_steps'],
                             alter_state_step=my_config['second_stage_alternating_steps'],
                             wandb_log=True,
-                            save_model_dir=my_config['save_path'],)
+                            save_model_dir=my_config['save_path'])
         print(gymenv.action_space, gymenv.observation_space)
         if my_config['comment']: print("comment: \n\t", my_config['comment'])
         my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
