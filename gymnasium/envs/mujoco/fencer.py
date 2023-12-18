@@ -317,10 +317,10 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
         self.match_reward = {
-            "win": 1,
-            "lose": -1,
+            "win": 5,
+            "lose": -5,
             "draw": 0,
-            "foul": -5,
+            "foul": 0,
         }
         self.GAME_STATUS = GameStatus(
             'Rules', ['IDLE', 'WIN', 'LOSE', 'DRAW', 'FOUL'])
@@ -528,14 +528,18 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if truncated:
             return threshold*min(1, np.exp(max(-5, exp_coeff * (nearness - nearness_threshold))))
         return threshold*np.exp(max(-5, exp_coeff * (nearness - nearness_threshold)))
-
+    def outOfArena(self, agent=0):
+        border0_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"0_indicator")
+        border1_vec = self.get_geom_com(f"{agent}_{self.center_point}") - self.get_geom_com(f"1_indicator")
+        # if agent is at the same side of borders, then the dot product of the two vectors should be positive
+        return border0_vec[0] * border1_vec[0] >= 0
     def step(self, action):
         self.eps_stepcnt += 1
         self.step_count += 1
 
         agent = 0
         opponent = 1 - agent
-        reward_ctrl = self.control_reward(action) * 0.05
+        reward_ctrl = self.control_reward(action) / 5
         # calculate nearness
         nearness_scalar_0, nearness_vec_0, center_vec_0 = self.calculate_nearness(
             agent)
@@ -586,7 +590,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if np.linalg.norm(center_vec_1) < self.collide_dist_threshold:
             if self.collide2target(1):  # be attacked
                 self.GAME_STATUS.oppent_win()
-
+        if self.outOfArena(0) or self.outOfArena(1):
+            self.GAME_STATUS.foul()
         reward = reward_ctrl + reward_near + penalty_oppent_near
         done = False
         # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])

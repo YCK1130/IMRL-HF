@@ -19,8 +19,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 1
-date = '1217'
+run_num = 3
+date = '1218'
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -30,12 +30,12 @@ my_config = {
     "eval_episode_num": 100,
     "first_stage_steps": 4e5,
     "second_stage_alternating_steps": 1e5,
-    "second_stage_model": "models/1215_4/PPO_1000000.zip",
+    "second_stage_model": "models/1217_2/PPO_1600000.zip",
     "max_steps": 2e6,
 
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''2D, add velocity states''',
+    "comment": '''2D, out of border foul, add velocity states, control * 0.2, self play 4e5''',
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
 model_dir = my_config['save_path']
@@ -81,12 +81,12 @@ class CustomCNN(BaseFeaturesExtractor):
 
 
 def train(env, sb3_algo):
+    my_config['algorithm'] = sb3_algo
     run = wandb.init(
         project="Fencer",
         config=my_config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         id=my_config["run_id"],
-        algo=sb3_algo
     )
     device = my_config['device']
     policy_network = my_config['policy_network']
