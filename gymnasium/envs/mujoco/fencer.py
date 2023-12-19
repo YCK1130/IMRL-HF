@@ -473,7 +473,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         print("first_state_step: ", self.first_state_step)
         if second_state_method == "alter":
             print("alter_state_step: ", self.alter_state_step)
-        print("truncated_step: ", self.truncated_step, "**NOT USED**")
+        print("truncated_step: ", self.truncated_step)
         ############################################
         # episode related properties
         ############################################
@@ -496,6 +496,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         }
         self.fps = self.metadata["render_fps"]
         print("fps: ", self.fps)
+        print("oppoent method: ", self.second_state_method)
         print("-------------------------------------")
 
     def get_geom_com(self, geom_name):
@@ -844,15 +845,21 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             return rel_vector
 
     def _get_opponent_action(self):
-        # print(self.step_count,self.first_state_step,  self.last_model_update_step, self.alter_state_step)
+        if self.second_state_method == "manual" and self.oppent_model is None:
+            print("second_state_method loading: ", self.second_state_model_path)
+            self.oppent_model = self.second_state_model
+            if(self.method == ASquaredCPPOAgent):
+                opp_action = self.oppent_model.record_step(self._get_obs_agent1())
+            else:
+                opp_action, _ = self.oppent_model.predict(
+                self._get_obs_agent1(), deterministic=True)
+            return opp_action
         if self.step_count < self.first_state_step:
             return np.ones(self.env_action_space_shape // 2)
-        elif self.oppent_model is None or self.step_count > self.last_model_update_step + self.alter_state_step:
+        elif self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
             if self.second_state_method == "alter":
                 self.oppent_model = self.find_last_model()
-            elif self.second_state_method == "manual":
-                self.oppent_model = self.second_state_model
             if self.oppent_model is None:
                 return np.zeros(self.env_action_space_shape//2)
             if(self.method == ASquaredCPPOAgent):
