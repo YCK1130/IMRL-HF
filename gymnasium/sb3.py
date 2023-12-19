@@ -125,7 +125,7 @@ def train(env, sb3_algo, train_model=None):
 
     policy_kwargs = dict(
         activation_fn=nn.ReLU,
-        net_arch=[dict(pi=[64, 128, 64], vf=[64, 128, 64])])
+        net_arch=dict(pi=[64, 128, 64], vf=[64, 128, 64]))
 
     match sb3_algo:
         case "SAC":
