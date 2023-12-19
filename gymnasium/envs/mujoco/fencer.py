@@ -27,7 +27,7 @@ COLORMAP = {
     "Yellow": np.array([1, 1, 0, 1]),
     "Blue": np.array([0, 0, 1, 1]),
     "Red": np.array([1, 0, 0, 1]),
-    "Orange": np.array([1, 87 / 255, 51 / 255, 1]),
+    "Orange": np.array([1, 144 / 255, 101 / 255, 1]),
 }
 EPISODE_LOG = False
 
@@ -405,7 +405,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.match_reward = {
             "win": 10,
             "lose": -10,
-            "draw": -5,
+            "draw": 0,
             "foul": -5,
             "timeout": -5,
         }
