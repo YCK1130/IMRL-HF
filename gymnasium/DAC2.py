@@ -17,6 +17,8 @@ import torch
 from torch import nn
 import spaces
 import tqdm
+from scheduler import MultiStageScheduler, ExponentialScheduler
+
 # Create directories to hold models and logs
 model_dir = "models"
 log_dir = "logs"
@@ -120,6 +122,14 @@ def dacConfigSetup(**kwargs):
         option_body_fn=lambda: FCBody(config.state_dim, hidden_units=hidden_units, gate=config.gate),
     )
     config.optimizer_fn = lambda params: torch.optim.Adam(params, 3e-4, eps=1e-5)
+    config.lr_scheduler = MultiStageScheduler([
+        # LinearScheduler(
+        #     in_min=0, in_max=0.125, out_min=0.00001, out_max=0.001),
+        ExponentialScheduler(
+            in_min=0, in_max=0.25, out_start=0.00001, out_end=0.0001, rate=1),
+        ExponentialScheduler(
+            in_min=0.25, in_max=1, out_start=0.0001, out_end=0.00002, rate=1)
+    ])
     config.discount = 0.99
     config.use_gae = True
     config.gae_tau = 0.95
