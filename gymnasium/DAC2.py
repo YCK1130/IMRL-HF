@@ -23,8 +23,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 5
-date = '1218'
+run_num = 3
+date = '1219'
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
