@@ -15,6 +15,7 @@ import torch
 from torch import nn
 import spaces
 import tqdm
+from scheduler import MultiStageScheduler, ExponentialScheduler
 
 # Create directories to hold models and logs
 model_dir = "models"
@@ -69,7 +70,8 @@ class CustomCNN(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(n_input_channels, 16,
+                      kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16, 64, kernel_size=3, stride=1, padding=1),
@@ -83,9 +85,11 @@ class CustomCNN(BaseFeaturesExtractor):
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
-            n_flatten = self.cnn(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
+            n_flatten = self.cnn(torch.as_tensor(
+                observation_space.sample()[None]).float()).shape[1]
 
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+        self.linear = nn.Sequential(
+            nn.Linear(n_flatten, features_dim), nn.ReLU())
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         return self.linear(self.cnn(observations))
@@ -101,24 +105,51 @@ def train(env, sb3_algo):
     )
     device = my_config["device"]
     policy_network = my_config["policy_network"]
+
+    # TODO: Adjust parameters
+    learning_rate_scheduler = MultiStageScheduler([
+        # LinearScheduler(
+        #     in_min=0, in_max=0.125, out_min=0.00001, out_max=0.001),
+        ExponentialScheduler(
+            in_min=0, in_max=0.25, out_start=0.00001, out_end=0.0001, rate=1),
+        ExponentialScheduler(
+            in_min=0.25, in_max=1, out_start=0.0001, out_end=0.00002, rate=1)
+    ])
+
+    iters = 0
+    total_iters = my_config["max_steps"] / my_config["saving_timesteps"]
+    progress = 0.0
+
+    def schedule(_):
+        return learning_rate_scheduler(progress)
+
     match sb3_algo:
         case "SAC":
-            model = SAC(policy_network, env, verbose=1, device=device, tensorboard_log=log_dir)
+            model = SAC(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir,
+                        learning_rate=schedule)
         case "TD3":
-            model = TD3(policy_network, env, verbose=1, device=device, tensorboard_log=log_dir)
+            model = TD3(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir,
+                        learning_rate=schedule)
         case "A2C":
-            model = A2C(policy_network, env, verbose=1, device=device, tensorboard_log=log_dir)
+            model = A2C(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir,
+                        learning_rate=schedule)
         case "PPO":
-            model = PPO(policy_network, env, verbose=1, device=device, tensorboard_log=log_dir)
+            model = PPO(policy_network, env, verbose=1,
+                        device=device, tensorboard_log=log_dir,
+                        learning_rate=schedule)
         case _:
             print("Algorithm not found")
             return
 
-    iters = 0
     current_best_reward = -1e5
     current_best_win = -1
     while True:
         iters += 1
+        progress = iters / total_iters
+
         model.learn(
             total_timesteps=my_config["saving_timesteps"],
             reset_num_timesteps=False,
@@ -228,7 +259,8 @@ if __name__ == "__main__":
     versions = ["v1", "v2"]
     parser = argparse.ArgumentParser(description="Train or test model.")
     # parser.add_argument('gymenv', help='Gymnasium environment i.e. Humanoid-v4')
-    parser.add_argument("sb3_algo", help="StableBaseline3 RL algorithm i.e. SAC, TD3")
+    parser.add_argument(
+        "sb3_algo", help="StableBaseline3 RL algorithm i.e. SAC, TD3")
     parser.add_argument("-t", "--train", action="store_true")
     parser.add_argument("-s", "--test", metavar="path_to_model")
     parser.add_argument("-s2", "--second_model", metavar="second_state_model")
@@ -279,7 +311,8 @@ if __name__ == "__main__":
         if my_config["comment"]:
             print("comment: \n\t", my_config["comment"])
         my_config["run_id"] = f"{date}_{run_num}_{args.sb3_algo}"
-        rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
+        rep = input(
+            f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
         if rep.lower() != "y":
             exit(0)
         try:
