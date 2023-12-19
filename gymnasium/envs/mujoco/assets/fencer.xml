@@ -8,6 +8,8 @@
 	<asset>
 		<texture type="skybox" builtin="gradient" rgb1="0.059 0.620 0.961" rgb2="0.212 0.251 0.643" width="32" height="512" random="0.001" />
 		<material name="glass" reflectance="1" rgba="1 1 1 0.3" shininess="0.7" />
+		<material name="light-sword-yellow" rgba=".8 .2 0 1" emission="2" />
+		<material name="light-sword-blue" rgba="0 .2 0.8 1" emission="2" />
 	</asset>
 	<worldbody>
 		<light diffuse=".5 .5 .5" dir="0 0 -1" pos="0 0 3" />
@@ -58,7 +60,7 @@
 													<joint axis="0 1 0" damping=".1" name="0_r_wrist_flex_joint" pos="0 0 0" range="-1.094 0" type="hinge" />
 													<body name="0_r_wrist_roll_link" pos="0 0 0">
 														<joint axis="1 0 0" damping="0.1" limited="true" name="0_r_wrist_roll_joint" pos="0 0 0" range="-1.5 1.5" type="hinge" />
-														<geom conaffinity="1" name="0_sword_blade" pos="0.6 0.02 0.02" size="0.5 0.005 0.01" type="box" />
+														<geom conaffinity="1" name="0_sword_blade" pos="0.6 0.02 0.02" size="0.5 0.005 0.01" type="box" material="light-sword-blue" />
 														<geom name="0_sword_tip" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 1.1 0.02 0.02" size="0.008" conaffinity="1" />
 														<geom conaffinity="1" name="0_sword_handle" pos="0.1 0.02 0.02" size="0.1 0.02 0.02" type="box" />
 													</body>
@@ -117,7 +119,7 @@
 													<joint axis="0 1 0" damping=".1" name="1_r_wrist_flex_joint" pos="0 0 0" range="-1.094 0" type="hinge" />
 													<body name="1_r_wrist_roll_link" pos="0 0 0">
 														<joint axis="1 0 0" damping="0.1" limited="true" name="1_r_wrist_roll_joint" pos="0 0 0" range="-1.5 1.5" type="hinge" />
-														<geom conaffinity="1" name="1_sword_blade" pos="0.6 0.02 0.02" size="0.5 0.005 0.01" type="box" />
+														<geom conaffinity="1" name="1_sword_blade" pos="0.6 0.02 0.02" size="0.5 0.005 0.01" type="box" material="light-sword-yellow" />
 														<geom name="1_sword_tip" type="sphere" rgba="0.6 0.6 0.6 1" pos=" 1.1 0.02 0.02" size="0.008" conaffinity="1" />
 														<geom conaffinity="1" name="1_sword_handle" pos="0.1 0.02 0.02" size="0.1 0.02 0.02" type="box" />
 													</body>
