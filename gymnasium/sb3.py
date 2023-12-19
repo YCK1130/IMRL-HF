@@ -32,8 +32,8 @@ my_config = {
     "saving_timesteps": 1e5,
     "device": "cuda",
     "eval_episode_num": 100,
-    "eps_time_limit": 1900,
-    "first_stage_steps": 4e5,
+    "eps_time_limit": 600,
+    "first_stage_steps": 5e5,
     "second_stage_alternating_steps": 1e5,
     "second_stage_model": "",
     "max_steps": 2e6,
@@ -46,7 +46,7 @@ my_config = {
     foul penalty:
       - if agent violate the rule
       + if not agent violate the rule
-    time limit: 1900
+    time limit: 600
     """,
     "comment": """
     self play 4e5
@@ -95,7 +95,7 @@ class CustomCNN(BaseFeaturesExtractor):
         return self.linear(self.cnn(observations))
 
 
-def train(env, sb3_algo):
+def train(env, sb3_algo, train_model=None):
     my_config["algorithm"] = sb3_algo
     run = wandb.init(
         project="Fencer",
@@ -111,9 +111,9 @@ def train(env, sb3_algo):
         # LinearScheduler(
         #     in_min=0, in_max=0.125, out_min=0.00001, out_max=0.001),
         ExponentialScheduler(
-            in_min=0, in_max=0.25, out_start=0.00001, out_end=0.0001, rate=1),
+            in_min=0, in_max=0.25, out_start=0.0003, out_end=0.001, rate=1),
         ExponentialScheduler(
-            in_min=0.25, in_max=1, out_start=0.0001, out_end=0.00002, rate=1)
+            in_min=0.25, in_max=1, out_start=0.001, out_end=0.00005, rate=1)
     ])
 
     iters = 0
@@ -123,23 +123,47 @@ def train(env, sb3_algo):
     def schedule(_):
         return learning_rate_scheduler(progress)
 
+    policy_kwargs = dict(
+        activation_fn=nn.ReLU,
+        net_arch=[dict(pi=[64, 128, 64], vf=[64, 128, 64])])
+
     match sb3_algo:
         case "SAC":
-            model = SAC(policy_network, env, verbose=1,
-                        device=device, tensorboard_log=log_dir,
-                        learning_rate=schedule)
+            if train_model:
+                model = SAC.load(train_model, env=env, verbose=1,
+                                 device=device, tensorboard_log=log_dir,
+                                 learning_rate=schedule)
+            else:
+                model = SAC(policy_network, env, verbose=1,
+                            device=device, tensorboard_log=log_dir,
+                            learning_rate=schedule, policy_kwargs=policy_kwargs)
         case "TD3":
-            model = TD3(policy_network, env, verbose=1,
-                        device=device, tensorboard_log=log_dir,
-                        learning_rate=schedule)
+            if train_model:
+                model = TD3.load(train_model, env=env, verbose=1,
+                                 device=device, tensorboard_log=log_dir,
+                                 learning_rate=schedule)
+            else:
+                model = TD3(policy_network, env, verbose=1,
+                            device=device, tensorboard_log=log_dir,
+                            learning_rate=schedule, policy_kwargs=policy_kwargs)
         case "A2C":
-            model = A2C(policy_network, env, verbose=1,
-                        device=device, tensorboard_log=log_dir,
-                        learning_rate=schedule)
+            if train_model:
+                model = A2C.load(train_model, env=env, verbose=1,
+                                 device=device, tensorboard_log=log_dir,
+                                 learning_rate=schedule)
+            else:
+                model = A2C(policy_network, env, verbose=1,
+                            device=device, tensorboard_log=log_dir,
+                            learning_rate=schedule, policy_kwargs=policy_kwargs)
         case "PPO":
-            model = PPO(policy_network, env, verbose=1,
-                        device=device, tensorboard_log=log_dir,
-                        learning_rate=schedule)
+            if train_model:
+                model = PPO.load(train_model, env=env, verbose=1,
+                                 device=device, tensorboard_log=log_dir,
+                                 learning_rate=schedule)
+            else:
+                model = PPO(policy_network, env, verbose=1,
+                            device=device, tensorboard_log=log_dir,
+                            learning_rate=schedule, policy_kwargs=policy_kwargs)
         case _:
             print("Algorithm not found")
             return
@@ -262,6 +286,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "sb3_algo", help="StableBaseline3 RL algorithm i.e. SAC, TD3")
     parser.add_argument("-t", "--train", action="store_true")
+    parser.add_argument("-t1", "--train_model")
+    # parser.add_argument("-t1", "--train_model", action="train_model")
     parser.add_argument("-s", "--test", metavar="path_to_model")
     parser.add_argument("-s2", "--second_model", metavar="second_state_model")
     parser.add_argument(
@@ -316,7 +342,7 @@ if __name__ == "__main__":
         if rep.lower() != "y":
             exit(0)
         try:
-            train(gymenv, args.sb3_algo)
+            train(gymenv, args.sb3_algo, args.train_model)
             wandb.finish()
         except KeyboardInterrupt:
             wandb.finish()
