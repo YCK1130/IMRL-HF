@@ -788,7 +788,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
             opp_action, _ = self.oppent_model.predict(self._get_obs_agent1(), deterministic=True)
             return opp_action
         if self.step_count < self.first_state_step:
-            return np.ones(self.env_action_space_shape // 2)
+            return np.zeros(self.env_action_space_shape // 2)
         elif self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
             if self.second_state_method == "alter":
