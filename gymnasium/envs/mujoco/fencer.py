@@ -47,6 +47,7 @@ def dacConfigSetup(first_state_step, alter_state_step, save_model_dir, **kwargs)
     kwargs.setdefault('tasks', False)
     kwargs.setdefault('max_steps', 1e5)
     kwargs.setdefault('beta_weight', 0)
+    kwargs.setdefault('real_max_steps', 2e6)
     config = Config()
     config.merge(kwargs)
 
@@ -758,7 +759,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         qpos = self.init_qpos
         qvel = self.init_qvel
         if self.enable_random and self.step_count > self.first_state_step + self.alter_state_step:
-            qpos += self.np_random.uniform(low=-0.1, high=0.1, size=len(self.init_qpos))
+            qpos += self.np_random.uniform(low=-0.5, high=0.5, size=len(self.init_qpos))
             qvel += self.np_random.uniform(low=-0.1, high=0.1, size=len(self.init_qvel))
         self.GAME_STATUS.reset()
         self.eps_reward = 0
@@ -855,7 +856,15 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
                 self._get_obs_agent1(), deterministic=True)
             return opp_action
         if self.step_count < self.first_state_step:
-            return np.ones(self.env_action_space_shape // 2)
+            if self.second_state_method == "manual":
+                if(self.method == ASquaredCPPOAgent):
+                    opp_action = self.oppent_model.record_step(self._get_obs_agent1())
+                else:
+                    opp_action, _ = self.oppent_model.predict(
+                    self._get_obs_agent1(), deterministic=True)
+                return opp_action
+            else:
+                return np.zeros(self.env_action_space_shape // 2)
         elif self.step_count > self.last_model_update_step + self.alter_state_step:
             self.last_model_update_step = self.step_count
             if self.second_state_method == "alter":

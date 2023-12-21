@@ -7,6 +7,7 @@
 from mailbox import NotEmptyError
 from xml.dom import NoDataAllowedErr
 from numpy import size
+import wandb
 from ..network import *
 from ..component.replay import Storage
 from .BaseAgent import *
@@ -24,8 +25,9 @@ class ASquaredCPPOAgent(BaseAgent):
         # print(list(self.network.parameters()))
         # exit()
         self.opt = config.optimizer_fn(self.network.parameters())
+        self.scheduler = config.lr_scheduler
         self.total_steps = 0
-
+        self.real_max_steps = config.real_max_steps
         self.worker_index = tensor(np.arange(config.num_workers)).long()
         self.states = self.task.reset()
         self.states = config.state_normalizer(self.states)
@@ -113,6 +115,11 @@ class ASquaredCPPOAgent(BaseAgent):
     def learn(self, storage, mdp, freeze_v=False):
         # print("LEARNING")
         config = self.config
+        new_lr = self.scheduler(self.total_steps/self.real_max_steps)
+        for param_group in self.opt.param_groups:
+            param_group['lr'] = new_lr
+        wandb.log({"lr":new_lr})
+        
         states, actions, options, log_probs_old, returns, advantages, prev_options, inits, pi_hat, mean, std = \
             storage.cat(
                 ['s', 'a', 'o', 'log_pi_%s' % (mdp), 'ret_%s' % (mdp), 'adv_%s' % (mdp), 'prev_o', 'init', 'pi_hat',

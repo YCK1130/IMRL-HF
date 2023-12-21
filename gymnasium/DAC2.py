@@ -25,8 +25,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 3
-date = '1219'
+run_num = 21
+date = "curr_goal_new"
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -34,14 +34,27 @@ my_config = {
     "saving_timesteps": 1e5,
     "device": "cpu",
     "eval_episode_num": 100,
-    "first_stage_steps": 1e4,
+    "eps_time_limit": 600,
+    "first_stage_steps": 5e5,
     "second_stage_alternating_steps": 1e5,
-    "second_stage_model": "models/1215_1/PPO_1000000.zip",
+    "second_stage_model": "",
     "max_steps": 2e6,
-
     "testing_first_stage_steps": 0,
     "testing_second_stage_alternating_steps": 1e6,
-    "comment": '''1 goal reward, no random reset, small control penalty, train with trained model''',
+    "version": "v2",
+    "version description": """
+    2D,
+    out of border foul closer border,
+    foul penalty:
+      - if agent violate the rule
+      + if not agent violate the rule
+    time limit: 600
+    """,
+    "comment": """
+    curriculum
+    match reward 10
+    goal reward
+    """,
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
 model_dir = my_config['save_path']
@@ -98,9 +111,10 @@ def dacConfigSetup(**kwargs):
     kwargs.setdefault('tasks', False)
     kwargs.setdefault('max_steps', 1e5)
     kwargs.setdefault('beta_weight', 0)
+    kwargs.setdefault('real_max_steps', 2e6)
     config = Config()
     config.merge(kwargs)
-
+    config.real_max_steps = my_config["max_steps"]
     # if config.tasks:
     #     set_tasks(config)
 
@@ -126,9 +140,9 @@ def dacConfigSetup(**kwargs):
         # LinearScheduler(
         #     in_min=0, in_max=0.125, out_min=0.00001, out_max=0.001),
         ExponentialScheduler(
-            in_min=0, in_max=0.25, out_start=0.00001, out_end=0.0001, rate=1),
+            in_min=0, in_max=0.25, out_start=0.0003, out_end=0.001, rate=1),
         ExponentialScheduler(
-            in_min=0.25, in_max=1, out_start=0.0001, out_end=0.00002, rate=1)
+            in_min=0.25, in_max=1, out_start=0.001, out_end=0.00005, rate=1)
     ])
     config.discount = 0.99
     config.use_gae = True
@@ -281,6 +295,7 @@ if __name__ == '__main__':
                             render_mode=None,
                             first_state_step=my_config['first_stage_steps'],
                             wandb_log=True,
+                            # enable_random=True,
                             save_model_dir=my_config['save_path'],
                             second_state_method='manual',
                             second_state_model=args.second_model,
@@ -291,6 +306,7 @@ if __name__ == '__main__':
                             first_state_step=my_config['first_stage_steps'],
                             alter_state_step=my_config['second_stage_alternating_steps'],
                             wandb_log=True,
+                            # enable_random=True,
                             save_model_dir=my_config['save_path'],
                             method=ASquaredCPPOAgent)
         print(gymenv.action_space, gymenv.observation_space)
