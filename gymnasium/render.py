@@ -6,10 +6,10 @@ import argparse
 from gymnasium.wrappers import TimeLimit, RecordVideo, RecordEpisodeStatistics
 
 
-gymenv = gym.make("Fencer", render_mode="human")
+gymenv = gym.make("Fencer", render_mode="human", first_state_step=1e7)
 gymenv.reset()
 count = 0
-action = [1]*10
+action = [0]*10
 while True:
     gymenv.render()
     count += 1
