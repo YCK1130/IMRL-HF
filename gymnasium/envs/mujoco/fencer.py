@@ -404,8 +404,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
         self.match_reward = {
-            "win": 10,
-            "lose": -10,
+            "win": 2,
+            "lose": -2,
             "draw": 0,
             "foul": -5,
             "timeout": -5,
@@ -675,6 +675,7 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         if self.eps_stepcnt > self.truncated_step:
             self.GAME_STATUS.timeout()
         reward = reward_ctrl + reward_near + penalty_oppent_near
+        # reward = 0
         done = False
         # print("COLOR:", self.model.geom_rgba[self.get_geom_id(f"{agent}_{self.attact_point}")])
         self.eps_reward += reward

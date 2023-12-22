@@ -25,8 +25,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 21
-date = "curr_goal_new"
+run_num = 24
+date = "reward2"
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -52,8 +52,8 @@ my_config = {
     """,
     "comment": """
     curriculum
-    match reward 10
-    goal reward
+    match reward 2
+    full
     """,
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
@@ -312,7 +312,8 @@ if __name__ == '__main__':
         print(gymenv.action_space, gymenv.observation_space)
         if my_config['comment']: print("comment: \n\t", my_config['comment'])
         my_config['run_id'] = f"{date}_{run_num}_{args.sb3_algo}"
-        rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
+        # rep = input(f"You are about to train '{my_config['run_id']}'. Press Y/y to continue... : ")
+        rep = 'y'
         if rep.lower() != 'y':
             exit(0)
         try:
