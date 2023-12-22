@@ -295,7 +295,7 @@ if __name__ == '__main__':
                             render_mode=None,
                             first_state_step=my_config['first_stage_steps'],
                             wandb_log=True,
-                            # enable_random=True,
+                            enable_random=True,
                             save_model_dir=my_config['save_path'],
                             second_state_method='manual',
                             second_state_model=args.second_model,
@@ -306,7 +306,7 @@ if __name__ == '__main__':
                             first_state_step=my_config['first_stage_steps'],
                             alter_state_step=my_config['second_stage_alternating_steps'],
                             wandb_log=True,
-                            # enable_random=True,
+                            enable_random=True,
                             save_model_dir=my_config['save_path'],
                             method=ASquaredCPPOAgent)
         print(gymenv.action_space, gymenv.observation_space)
