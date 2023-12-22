@@ -25,8 +25,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 25
-date = "reward5"
+run_num = 26
+date = "reward20"
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -52,7 +52,7 @@ my_config = {
     """,
     "comment": """
     curriculum
-    match reward 5
+    match reward 20
     full
     """,
 }
