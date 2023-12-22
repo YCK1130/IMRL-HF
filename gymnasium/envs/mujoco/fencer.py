@@ -404,8 +404,8 @@ class FencerEnv(MujocoEnv, utils.EzPickle):
         self.attact_point = "sword_tip"
         self.center_point = "shoulder_pan"
         self.match_reward = {
-            "win": 5,
-            "lose": -5,
+            "win": 20,
+            "lose": -20,
             "draw": 0,
             "foul": -5,
             "timeout": -5,
