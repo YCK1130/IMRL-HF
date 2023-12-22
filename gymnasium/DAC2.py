@@ -25,8 +25,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 26
-date = "reward20"
+run_num = 27
+date = "random"
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -52,8 +52,9 @@ my_config = {
     """,
     "comment": """
     curriculum
-    match reward 20
+    match reward 10
     full
+    random
     """,
 }
 os.makedirs(my_config['save_path'], exist_ok=True)
@@ -295,7 +296,7 @@ if __name__ == '__main__':
                             render_mode=None,
                             first_state_step=my_config['first_stage_steps'],
                             wandb_log=True,
-                            # enable_random=True,
+                            enable_random=True,
                             save_model_dir=my_config['save_path'],
                             second_state_method='manual',
                             second_state_model=args.second_model,
@@ -306,7 +307,7 @@ if __name__ == '__main__':
                             first_state_step=my_config['first_stage_steps'],
                             alter_state_step=my_config['second_stage_alternating_steps'],
                             wandb_log=True,
-                            # enable_random=True,
+                            enable_random=True,
                             save_model_dir=my_config['save_path'],
                             method=ASquaredCPPOAgent)
         print(gymenv.action_space, gymenv.observation_space)
