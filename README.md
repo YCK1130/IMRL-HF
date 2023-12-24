@@ -22,6 +22,7 @@ cd gymnasium/
 
 # Algorithms in StableBaselines3
 python sb3.py AlgorithmName -t
+# 'AlgorithmName' can be SAC, TD3, PPO, or A2C
 
 # Double Actor-Critics
 python DAC.py DAC -t
