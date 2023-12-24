@@ -4,6 +4,7 @@ This repository is the source code for _A Two-Step Approach for Physically Compe
 
 ## Installation
 
+Python 3.11 is required for installation.
 After cloning the repository, go into the directory and use the command below to install neccessary libraries:
 
 ```
@@ -21,9 +22,9 @@ cd gymnasium/
 # Step 1
 
 # Algorithms in StableBaselines3
-python sb3.py <AlgorithmName> -t
+python main.py <AlgorithmName> -t
 # 'AlgorithmName' can be SAC, TD3, PPO, or A2C
-# e.g. python sb3.py PPO -t
+# e.g. python main.py PPO -t
 
 # Double Actor-Critics
 python DAC.py DAC -t
@@ -31,7 +32,7 @@ python DAC.py DAC -t
 # Step 2 (The two models should be trained by same method)
 
 # Algorithms in StableBaselines3
-python sb3.py <AlgorithmName> -t [-s2 /path/to/second/model]
+python main.py <AlgorithmName> -t [-s2 /path/to/second/model]
 
 # Double Actor-Critics
 python DAC.py DAC -t [-s2 /path/to/second/model]
@@ -47,7 +48,7 @@ The model for the command above will be stored in gymnasium/models/\[run_id\]/\[
 # Play with itself (with first stage stationary)
 
 # Algorithms in StableBaselines3
-python sb3.py <AlgorithmName> -s /path/to/model
+python main.py <AlgorithmName> -s /path/to/model
 
 # Double Actor-Critics
 python DAC.py DAC -s /path/to/model
@@ -55,7 +56,7 @@ python DAC.py DAC -s /path/to/model
 # Play with another model (The two models should be trained by same method)
 
 # Algorithms in StableBaselines3
-python sb3.py <AlgorithmName> -s /path/to/model -s2 /path/to/second/model
+python main.py <AlgorithmName> -s /path/to/model -s2 /path/to/second/model
 
 # Double Actor-Critics
 python DAC.py DAC -s /path/to/model -s2 /path/to/second/model
