@@ -23,8 +23,8 @@ log_dir = "logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-run_num = 10
-date = "1218"
+run_num = "test"
+date = "0000"
 my_config = {
     "run_id": f"{date}_{run_num}",
     "policy_network": "MlpPolicy",
@@ -136,7 +136,7 @@ def train(env, sb3_algo, train_model=None):
             else:
                 model = SAC(policy_network, env, verbose=1,
                             device=device, tensorboard_log=log_dir,
-                            learning_rate=schedule, policy_kwargs=policy_kwargs)
+                            learning_rate=schedule)
         case "TD3":
             if train_model:
                 model = TD3.load(train_model, env=env, verbose=1,
@@ -145,7 +145,7 @@ def train(env, sb3_algo, train_model=None):
             else:
                 model = TD3(policy_network, env, verbose=1,
                             device=device, tensorboard_log=log_dir,
-                            learning_rate=schedule, policy_kwargs=policy_kwargs)
+                            learning_rate=schedule)
         case "A2C":
             if train_model:
                 model = A2C.load(train_model, env=env, verbose=1,
