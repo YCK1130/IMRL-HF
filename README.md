@@ -1,87 +1,62 @@
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8127025.svg)](https://doi.org/10.5281/zenodo.8127025)
+# Hierarchy Fencer
 
-
-<p align="center">
-    <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" width="500px"/>
-</p>
-
-Gymnasium is an open source Python library for developing and comparing reinforcement learning algorithms by providing a standard API to communicate between learning algorithms and environments, as well as a standard set of environments compliant with that API. This is a fork of OpenAI's [Gym](https://github.com/openai/gym) library by it's maintainers (OpenAI handed over maintenance a few years ago to an outside team), and is where future maintenance will occur going forward.
-
-The documentation website is at [gymnasium.farama.org](https://gymnasium.farama.org), and we have a public discord server (which we also use to coordinate development work) that you can join here: https://discord.gg/bnJ6kubTg6
-
-## Environments
-
-Gymnasium includes the following families of environments along with a wide variety of third-party environments
-* [Classic Control](https://gymnasium.farama.org/environments/classic_control/) - These are classic reinforcement learning based on real-world problems and physics.
-* [Box2D](https://gymnasium.farama.org/environments/box2d/) - These environments all involve toy games based around physics control, using box2d based physics and PyGame-based rendering
-* [Toy Text](https://gymnasium.farama.org/environments/toy_text/) - These environments are designed to be extremely simple, with small discrete state and action spaces, and hence easy to learn. As a result, they are suitable for debugging implementations of reinforcement learning algorithms.
-* [MuJoCo](https://gymnasium.farama.org/environments/mujoco/) - A physics engine based environments with multi-joint control which are more complex than the Box2D environments.
-* [Atari](https://gymnasium.farama.org/environments/atari/) - A set of 57 Atari 2600 environments simulated through Stella and the Arcade Learning Environment that have a high range of complexity for agents to learn.
-* [Third-party](https://gymnasium.farama.org/environments/third_party_environments/) - A number of environments have been created that are compatible with the Gymnasium API. Be aware of the version that the software was created for and use the `apply_env_compatibility` in `gymnasium.make` if necessary.
+This repository is the source code for _A Two-Step Approach for Physically Competitive Sports: A Case Study on Fencing_. It is built on top of [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) by the Farama Foundation and branch DAC of [DeepRL](https://github.com/ShangtongZhang/DeepRL/tree/DAC) by Shangtong Zhang.
 
 ## Installation
 
-To install the base Gymnasium library, use `pip install gymnasium`
-
-This does not include dependencies for all families of environments (there's a massive number, and some can be problematic to install on certain systems). You can install these dependencies for one family like `pip install "gymnasium[atari]"` or use `pip install "gymnasium[all]"` to install all dependencies.
-
-We support and test for Python 3.8, 3.9, 3.10, 3.11 on Linux and macOS. We will accept PRs related to Windows, but do not officially support it.
-
-## API
-
-The Gymnasium API models environments as simple Python `env` classes. Creating environment instances and interacting with them is very simple- here's an example using the "CartPole-v1" environment:
-
-```python
-import gymnasium as gym
-env = gym.make("CartPole-v1")
-
-observation, info = env.reset(seed=42)
-for _ in range(1000):
-    action = env.action_space.sample()
-    observation, reward, terminated, truncated, info = env.step(action)
-
-    if terminated or truncated:
-        observation, info = env.reset()
-env.close()
-```
-
-## Notable Related Libraries
-
-Please note that this is an incomplete list, and just includes libraries that the maintainers most commonly point newcommers to when asked for recommendations.
-
-* [CleanRL](https://github.com/vwxyzjn/cleanrl) is a learning library based on the Gymnasium API. It is designed to cater to newer people in the field and provides very good reference implementations.
-* [PettingZoo](https://github.com/Farama-Foundation/PettingZoo) is a multi-agent version of Gymnasium with a number of implemented environments, i.e. multi-agent Atari environments.
-* The Farama Foundation also has a collection of many other [environments](https://farama.org/projects) that are maintained by the same team as Gymnasium and use the Gymnasium API.
-* [Comet](https://www.comet.com/site/?utm_source=gymnasium&utm_medium=partner&utm_campaign=partner_gymnasium_2023&utm_content=github) is a free ML-Ops tool that tracks rewards, metrics, hyperparameters, and code for ML training runs. Comet has an easy-to use integration with Gymnasium, here's a [tutorial](https://bit.ly/CometGymnasiumIntegration) on how to use them together! Comet is a sponsor of the Farama Foundation!
-
-
-
-## Environment Versioning
-
-Gymnasium keeps strict versioning for reproducibility reasons. All environments end in a suffix like "-v0".  When changes are made to environments that might impact learning results, the number is increased by one to prevent potential confusion. These inherent from Gym.
-
-## Development Roadmap
-
-We have a roadmap for future development work for Gymnasium available here: https://github.com/Farama-Foundation/Gymnasium/issues/12
-
-## Support Gymnasium's Development
-
-If you are financially able to do so and would like to support the development of Gymnasium, please join others in the community in [donating to us](https://github.com/sponsors/Farama-Foundation).
-
-## Citation
-
-You can cite Gymnasium as:
+After cloning the repository, go into the directory and use the command below to install neccessary libraries:
 
 ```
-@misc{towers_gymnasium_2023,
-        title = {Gymnasium},
-        url = {https://zenodo.org/record/8127025},
-        abstract = {An API standard for single-agent reinforcement learning environments, with popular reference environments and related utilities (formerly Gym)},
-        urldate = {2023-07-08},
-        publisher = {Zenodo},
-        author = {Towers, Mark and Terry, Jordan K. and Kwiatkowski, Ariel and Balis, John U. and Cola, Gianluca de and Deleu, Tristan and Goulão, Manuel and Kallinteris, Andreas and KG, Arjun and Krimmel, Markus and Perez-Vicente, Rodrigo and Pierré, Andrea and Schulhoff, Sander and Tai, Jun Jet and Shen, Andrew Tan Jin and Younis, Omar G.},
-        month = mar,
-        year = {2023},
-        doi = {10.5281/zenodo.8127026},
-}
+pip install -r requirements.txt
+pip install -e .
 ```
+
+## Training
+
+This repository currently supports training methods of SAC, TD3, A2C, PPO, and DAC([Double Actor-Critic](https://arxiv.org/abs/1904.12691) by S. Zhang). All algorithms except for DAC are also supported by StableBaselines3.
+
+```
+cd gymnasium/
+
+# Step 1
+
+# Algorithms in StableBaselines3
+python sb3.py AlgorithmName -t
+
+# Double Actor-Critics
+python DAC.py DAC -t
+
+# Step 2 (The two models should be trained by same method)
+
+# Algorithms in StableBaselines3
+python sb3.py AlgorithmName -t -s2 /path/to/second/model
+
+# Double Actor-Critics
+python DAC.py DAC -t -s2 /path/to/second/model
+```
+
+In the last command, the file extension of the path must be removed. For example, models/0000_test/DAC_100000 is used instead of models/0000_test/DAC_100000.model .
+
+The model for the command above will be stored in gymnasium/models/\[run_id\]/\[algorithm_name\]\_\[steps\].zip or gymnasium/models/\[run_id\]/\[algorithm_name\]\_\[steps\].model .
+
+## Testing
+
+```
+# Play with itself
+
+# Algorithms in StableBaselines3
+python sb3.py AlgorithmName -s /path/to/model
+
+# Double Actor-Critics
+python DAC.py DAC -s /path/to/model
+
+# Play with another model (The two models should be trained by same method)
+
+# Algorithms in StableBaselines3
+python sb3.py AlgorithmName -s /path/to/model -s2 /path/to/second/model
+
+# Double Actor-Critics
+python DAC.py DAC -s /path/to/model -s2 /path/to/second/model
+```
+
+In the last command, the file extension of the path must also be removed.
