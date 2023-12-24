@@ -305,7 +305,18 @@ if __name__ == "__main__":
         choices=versions,
     )
     args = parser.parse_args()
-
+    match args.sb3_algo:
+        case "SAC":
+            method = SAC
+        case "TD3":
+            method = TD3
+        case "A2C":
+            method = A2C
+        case "PPO":
+            method = PPO
+        case _:
+            print("Algorithm not found")
+            exit(0)
     if args.train:
         if args.second_model:
             print(f"Specifing second model: {args.second_model}")
@@ -320,6 +331,7 @@ if __name__ == "__main__":
                 version=args.agent_verion,
                 opponent_version=args.opponent_version,
                 time_limit=my_config["eps_time_limit"],
+                method=method
             )
         else:
             gymenv = gym.make(
@@ -332,6 +344,7 @@ if __name__ == "__main__":
                 version=args.agent_verion,
                 opponent_version=args.agent_verion,  # opponent use same version as agent
                 time_limit=my_config["eps_time_limit"],
+                method=method
             )
         print(gymenv.action_space, gymenv.observation_space)
         if my_config["comment"]:
@@ -363,6 +376,7 @@ if __name__ == "__main__":
                     version=args.agent_verion,
                     opponent_version=args.opponent_version,
                     time_limit=my_config["eps_time_limit"],
+                    method=method
                 )
             else:
                 gymenv = gym.make(
@@ -376,6 +390,7 @@ if __name__ == "__main__":
                     version=args.agent_verion,
                     opponent_version=args.agent_verion,  # opponent use same version as agent
                     time_limit=my_config["eps_time_limit"],
+                    method=method
                 )
             test(gymenv, args.sb3_algo, path_to_model=args.test)
             # wandb.finish()
