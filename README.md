@@ -1,6 +1,6 @@
 # Hierarchy Fencer
 
-This repository is the source code for _A Two-Step Approach for Physically Competitive Sports: A Case Study on Fencing_. It is built on top of [Gymnasium] (https://github.com/Farama-Foundation/Gymnasium) by the Farama Foundation and branch DAC of [DeepRL] (https://github.com/ShangtongZhang/DeepRL/tree/DAC) by Shangtong Zhang.
+This repository is the source code for _A Two-Step Approach for Physically Competitive Sports: A Case Study on Fencing_. It is built on top of [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) by the Farama Foundation and branch DAC of [DeepRL](https://github.com/ShangtongZhang/DeepRL/tree/DAC) by Shangtong Zhang.
 
 ## Installation
 
@@ -13,7 +13,7 @@ pip install -e .
 
 ## Training
 
-This repository currently supports training methods of SAC, TD3, A2C, PPO, and DAC ([Double Actor-Critic] (https://arxiv.org/abs/1904.12691) by S. Zhang). All algorithms except for DAC are also supported by StableBaselines3.
+This repository currently supports training methods of SAC, TD3, A2C, PPO, and DAC ([Double Actor-Critic](https://arxiv.org/abs/1904.12691) by S. Zhang). All algorithms except for DAC are also supported by StableBaselines3.
 
 ```
 cd gymnasium/
