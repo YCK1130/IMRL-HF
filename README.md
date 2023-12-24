@@ -2,9 +2,9 @@
 
 This repository is the source code for _A Two-Step Approach for Physically Competitive Sports: A Case Study on Fencing_, the final project for the reinforcement leaning class in NTU(_CommE5069_). It is built on top of [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) by the Farama Foundation and branch DAC of [DeepRL](https://github.com/ShangtongZhang/DeepRL/tree/DAC) by Shangtong Zhang.
 
-**The environment should be installed and executed on Python 3.11**
+**The environment should be installed and executed on Python 3.11**.
 
-**[W&B](<https://wandb.ai/site>) is used for logs, it will automatically create a project "Fencer"**
+**[W&B](<https://wandb.ai/site>) is used for logs and it will automatically create a project "Fencer"**.
 
 ## Installation
 
